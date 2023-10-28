@@ -6,8 +6,8 @@
 #include <unistd.h>
 
 #include "inverter.h"
+#include "logging.h"
 #include "main.h"
-#include "tools.h"
 
 cInverter::cInverter(std::string devicename) {
   device = devicename;

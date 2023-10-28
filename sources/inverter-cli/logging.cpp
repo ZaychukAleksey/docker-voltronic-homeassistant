@@ -1,3 +1,5 @@
+#include "logging.h"
+
 #include <cstdarg>
 #include <cstdio>
 #include <cstring>
@@ -6,7 +8,6 @@
 #include <string>
 
 #include "main.h"
-#include "tools.h"
 
 
 void lprintf(const char* format, ...) {
@@ -37,7 +38,7 @@ void lprintf(const char* format, ...) {
     //to the logfile:
     static FILE* log;
     std::lock_guard lock(log_mutex);
-    log = fopen(LOG_FILE, "a");
+    log = fopen(kLogFile, "a");
     va_start(ap, format);
     vfprintf(log, fmt, ap);
     va_end(ap);

@@ -12,6 +12,6 @@ target_sources(inverter_poller
 
   inputparser.cpp
   inverter.cpp
-  tools.cpp
+  logging.cpp
 )
 target_link_libraries(inverter_poller -lpthread)

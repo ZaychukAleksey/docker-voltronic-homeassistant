@@ -18,8 +18,8 @@
 
 #include "inputparser.h"
 #include "inverter.h"
+#include "logging.h"
 #include "main.h"
-#include "tools.h"
 
 
 bool debugFlag = false;
