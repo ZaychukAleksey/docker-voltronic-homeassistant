@@ -147,14 +147,14 @@ int main(int argc, char* argv[]) {
 
   // Get command flag settings from the arguments (if any)
   InputParser cmdArgs(argc, argv);
-  const std::string& rawcmd = cmdArgs.getCmdOption("-r");
-  if (cmdArgs.cmdOptionExists("-h") || cmdArgs.cmdOptionExists("--help")) {
+  const auto& rawcmd = cmdArgs.GetCmdOption("-r");
+  if (cmdArgs.CmdOptionExists("-h") || cmdArgs.CmdOptionExists("--help")) {
     return print_help();
   }
-  if (cmdArgs.cmdOptionExists("-d")) {
+  if (cmdArgs.CmdOptionExists("-d")) {
     debugFlag = true;
   }
-  if (cmdArgs.cmdOptionExists("-1") || cmdArgs.cmdOptionExists("--run-once")) {
+  if (cmdArgs.CmdOptionExists("-1") || cmdArgs.CmdOptionExists("--run-once")) {
     runOnce = true;
   }
   lprintf("INVERTER: Debug set");

@@ -8,9 +8,9 @@
 /// You must place each arg after its own separate dash like: ./program -x -f filename
 class InputParser {
  public:
-  InputParser(int& argc, char** argv);
-  const std::string& getCmdOption(const std::string& option) const;
-  bool cmdOptionExists(const std::string& option) const;
+  InputParser(int argc, char** argv);
+  const std::string& GetCmdOption(const std::string& option) const;
+  bool CmdOptionExists(const std::string& option) const;
 
  private:
   std::vector<std::string> tokens_;
