@@ -183,7 +183,7 @@ int main(int argc, char* argv[]) {
   if (cmdArgs.CmdOptionExists("-1") || cmdArgs.CmdOptionExists("--run-once")) {
     runOnce = true;
   }
-  lprintf("INVERTER: Debug set");
+  log("INVERTER: Debug set");
   const char* settings;
 
   // Get the rest of the settings from the conf file
@@ -212,13 +212,13 @@ int main(int argc, char* argv[]) {
     ups->runMultiThread();
 
   while (true) {
-    lprintf("DEBUG:  Start loop");
+    log("DEBUG:  Start loop");
     // If inverter mode changes print it to screen
 
     if (ups_status_changed) {
       int mode = ups->GetMode();
       if (mode)
-        lprintf("INVERTER: Mode Currently set to: %d", mode);
+        log("INVERTER: Mode Currently set to: %d", mode);
 
       ups_status_changed = false;
     }
@@ -360,7 +360,7 @@ int main(int argc, char* argv[]) {
         if (runOnce) {
           // there is no thread -- ups->terminateThread();
           // Do once and exit instead of loop endlessly
-          lprintf("INVERTER: All queries complete, exiting loop.");
+          log("INVERTER: All queries complete, exiting loop.");
           exit(0);
         }
       }
