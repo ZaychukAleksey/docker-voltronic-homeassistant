@@ -45,29 +45,3 @@ void lprintf(const char* format, ...) {
     fclose(log);
   }
 }
-
-int print_help() {
-  printf("\nUSAGE:  ./inverter_poller <args> [-r <command>], [-h | --help], [-1 | --run-once]\n\n");
-
-  printf("SUPPORTED ARGUMENTS:\n");
-  printf("          -r <raw-command>      TX 'raw' command to the inverter\n");
-  printf("          -h | --help           This Help Message\n");
-  printf("          -1 | --run-once       Runs one iteration on the inverter, and then exits\n");
-  printf("          -d                    Additional debugging\n\n");
-
-  printf("RAW COMMAND EXAMPLES (see protocol manual for complete list):\n");
-  printf("Set output source priority  POP00     (Utility first)\n");
-  printf("                            POP01     (Solar first)\n");
-  printf("                            POP02     (SBU)\n");
-  printf("Set charger priority        PCP00     (Utility first)\n");
-  printf("                            PCP01     (Solar first)\n");
-  printf("                            PCP02     (Solar and utility)\n");
-  printf("                            PCP03     (Solar only)\n");
-  printf("Set other commands          PEa / PDa (Enable/disable buzzer)\n");
-  printf("                            PEb / PDb (Enable/disable overload bypass)\n");
-  printf("                            PEj / PDj (Enable/disable power saving)\n");
-  printf("                            PEu / PDu (Enable/disable overload restart)\n");
-  printf("                            PEx / PDx (Enable/disable backlight)\n\n");
-
-  return 1;
-}
