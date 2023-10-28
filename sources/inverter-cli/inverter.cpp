@@ -1,13 +1,13 @@
+#include <cstdio>
+#include <cstring>
 #include <fcntl.h>
-#include <stdio.h>
-#include <string.h>
 #include <syslog.h>
-#include <unistd.h>
-#include "inverter.h"
-#include "tools.h"
-#include "main.h"
-
 #include <termios.h>
+#include <unistd.h>
+
+#include "inverter.h"
+#include "main.h"
+#include "tools.h"
 
 cInverter::cInverter(std::string devicename) {
   device = devicename;
@@ -17,23 +17,23 @@ cInverter::cInverter(std::string devicename) {
   mode = 0;
 }
 
-string *cInverter::GetQpigsStatus() {
+std::string* cInverter::GetQpigsStatus() {
   m.lock();
-  string *result = new string(status1);
+  std::string* result = new std::string(status1);
   m.unlock();
   return result;
 }
 
-string *cInverter::GetQpiriStatus() {
+std::string *cInverter::GetQpiriStatus() {
   m.lock();
-  string *result = new string(status2);
+  std::string *result = new std::string(status2);
   m.unlock();
   return result;
 }
 
-string *cInverter::GetWarnings() {
+std::string *cInverter::GetWarnings() {
   m.lock();
-  string *result = new string(warnings);
+  std::string *result = new std::string(warnings);
   m.unlock();
   return result;
 }
@@ -190,7 +190,7 @@ bool cInverter::query(const char *cmd) {
   }
   buf[replysize-3] = '\0';      // Null-terminating on first CRC byte
   lprintf("DEBUG:  %s: %d bytes read: %s", cmd, i, buf);
-  
+
   lprintf("DEBUG:  %s query finished", cmd);
   return true;
 }
@@ -207,7 +207,7 @@ void cInverter::poll() {
         ups_qmod_changed = true;
       }
     }
-    
+
     // Reading QPIGS status
     if (!ups_qpigs_changed) {
       if (query("QPIGS") &&
@@ -245,7 +245,7 @@ void cInverter::poll() {
   }
 }
 
-void cInverter::ExecuteCmd(const string cmd) {
+void cInverter::ExecuteCmd(const std::string cmd) {
   // Sending any command raw
   if (query(cmd.data())) {
     m.lock();
