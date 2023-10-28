@@ -24,7 +24,7 @@
 
 bool debugFlag = false;
 bool runOnce = false;
-cInverter *ups = NULL;
+Inverter* ups = nullptr;
 std::atomic_bool ups_status_changed(false);
 std::atomic_bool ups_qmod_changed(false);
 std::atomic_bool ups_qpiri_changed(false);
@@ -197,7 +197,7 @@ int main(int argc, char* argv[]) {
   while (flock(fd, LOCK_EX)) sleep(1);
 
   bool ups_status_changed(false);
-  ups = new cInverter(devicename);
+  ups = new Inverter(devicename);
   // Logic to send 'raw commands' to the inverter..
   if (!rawcmd.empty()) {
     ups->ExecuteCmd(rawcmd);

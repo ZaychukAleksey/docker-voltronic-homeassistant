@@ -9,7 +9,7 @@
 #include "logging.h"
 #include "main.h"
 
-cInverter::cInverter(std::string devicename) {
+Inverter::Inverter(std::string devicename) {
   device = devicename;
   status1[0] = 0;
   status2[0] = 0;
@@ -17,28 +17,28 @@ cInverter::cInverter(std::string devicename) {
   mode = 0;
 }
 
-std::string* cInverter::GetQpigsStatus() {
+std::string* Inverter::GetQpigsStatus() {
   m.lock();
   std::string* result = new std::string(status1);
   m.unlock();
   return result;
 }
 
-std::string *cInverter::GetQpiriStatus() {
+std::string *Inverter::GetQpiriStatus() {
   m.lock();
   std::string *result = new std::string(status2);
   m.unlock();
   return result;
 }
 
-std::string *cInverter::GetWarnings() {
+std::string *Inverter::GetWarnings() {
   m.lock();
   std::string *result = new std::string(warnings);
   m.unlock();
   return result;
 }
 
-void cInverter::SetMode(char newmode) {
+void Inverter::SetMode(char newmode) {
   m.lock();
   if (mode && newmode != mode)
     ups_status_changed = true;
@@ -46,7 +46,7 @@ void cInverter::SetMode(char newmode) {
   m.unlock();
 }
 
-int cInverter::GetMode() {
+int Inverter::GetMode() {
   int result;
   m.lock();
   switch (mode) {
@@ -62,7 +62,7 @@ int cInverter::GetMode() {
   return result;
 }
 
-bool cInverter::query(const char *cmd) {
+bool Inverter::query(const char *cmd) {
   time_t started;
   int fd;
   int i = 0, n;
@@ -195,7 +195,7 @@ bool cInverter::query(const char *cmd) {
   return true;
 }
 
-void cInverter::poll() {
+void Inverter::poll() {
   extern const int runOnce;
 
   while (true) {
@@ -245,7 +245,7 @@ void cInverter::poll() {
   }
 }
 
-void cInverter::ExecuteCmd(const std::string cmd) {
+void Inverter::ExecuteCmd(const std::string cmd) {
   // Sending any command raw
   if (query(cmd.data())) {
     m.lock();
@@ -254,7 +254,7 @@ void cInverter::ExecuteCmd(const std::string cmd) {
   }
 }
 
-uint16_t cInverter::cal_crc_half(uint8_t *pin, uint8_t len) {
+uint16_t Inverter::cal_crc_half(uint8_t *pin, uint8_t len) {
   uint16_t crc;
 
   uint8_t da;
@@ -289,7 +289,7 @@ uint16_t cInverter::cal_crc_half(uint8_t *pin, uint8_t len) {
   return(crc);
 }
 
-bool cInverter::CheckCRC(unsigned char *data, int len) {
+bool Inverter::CheckCRC(unsigned char *data, int len) {
   uint16_t crc = cal_crc_half(data, len-3);
   return data[len-3]==(crc>>8) && data[len-2]==(crc&0xff);
 }

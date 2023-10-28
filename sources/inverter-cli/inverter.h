@@ -4,7 +4,7 @@
 #include <thread>
 #include <mutex>
 
-class cInverter {
+class Inverter {
   unsigned char buf[1024]; //internal work buffer
   char warnings[1024];
   char status1[1024];
@@ -21,11 +21,11 @@ class cInverter {
   uint16_t cal_crc_half(uint8_t* pin, uint8_t len);
 
  public:
-  cInverter(std::string devicename);
+  Inverter(std::string devicename);
   void poll();
 
   void runMultiThread() {
-    t1 = std::thread(&cInverter::poll, this);
+    t1 = std::thread(&Inverter::poll, this);
   }
 
   void terminateThread() {
