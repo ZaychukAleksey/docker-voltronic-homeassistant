@@ -10,16 +10,15 @@ CommandLineArguments::CommandLineArguments(int argc, char** argv) {
   }
 }
 
-const std::string& CommandLineArguments::GetCmdOption(const std::string& option) const {
+const std::string& CommandLineArguments::Get(std::string_view option) const {
   auto itr = std::find(tokens_.begin(), tokens_.end(), option);
   if (itr != tokens_.end() && ++itr != tokens_.end()) {
     return *itr;
   }
-  static const std::string empty_string;
-  return empty_string;
+  throw std::runtime_error("ERROR: option '" + std::string(option) + "' hasn't been specified.");
 }
 
-bool CommandLineArguments::CmdOptionExists(const std::string& option) const {
+bool CommandLineArguments::IsSet(std::string_view option) const {
   return std::find(tokens_.begin(), tokens_.end(), option) != tokens_.end();
 }
 

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <string_view>
 #include <vector>
 
 /// This class simply finds cmd line args and parses them for use in a program.
@@ -9,8 +10,13 @@
 class CommandLineArguments {
  public:
   CommandLineArguments(int argc, char** argv);
-  const std::string& GetCmdOption(const std::string& option) const;
-  bool CmdOptionExists(const std::string& option) const;
+
+  /// @returns true if the option was set via command line arguments, false otherwise.
+  bool IsSet(std::string_view option) const;
+
+  /// @returns option value if the option was provided.
+  /// @throws runtime_exception if the option wasn't provided.
+  const std::string& Get(std::string_view option) const;
 
  private:
   std::vector<std::string> tokens_;

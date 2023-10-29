@@ -56,9 +56,7 @@ void PrintHelp() {
 
 const std::string& GetConfigurationFileName(const CommandLineArguments& cmd_args) {
   static std::string kConfigurationFile = "./inverter.conf";
-  return cmd_args.CmdOptionExists("-c")
-         ? cmd_args.GetCmdOption("-c")
-         : kConfigurationFile;
+  return cmd_args.IsSet("-c") ? cmd_args.Get("-c") : kConfigurationFile;
 }
 
 int main(int argc, char* argv[]) {
@@ -113,27 +111,26 @@ int main(int argc, char* argv[]) {
   float batt_redischarge_voltage;
 
   // Get command flag settings from the arguments (if any)
-  CommandLineArguments cmdArgs(argc, argv);
-  const auto& rawcmd = cmdArgs.GetCmdOption("-r");
-  if (cmdArgs.CmdOptionExists("-h") || cmdArgs.CmdOptionExists("--help")) {
+  CommandLineArguments arguments(argc, argv);
+  if (arguments.IsSet("-h") || arguments.IsSet("--help")) {
     PrintHelp();
     return 0;
   }
-  if (cmdArgs.CmdOptionExists("-d")) {
+  if (arguments.IsSet("-d")) {
     debugFlag = true;
   }
-  if (cmdArgs.CmdOptionExists("-1") || cmdArgs.CmdOptionExists("--run-once")) {
+  if (arguments.IsSet("-1") || arguments.IsSet("--run-once")) {
     runOnce = true;
   }
   log("INVERTER: Debug set");
 
-  auto settings = LoadSettingsFromFile(GetConfigurationFileName(cmdArgs));
+  auto settings = LoadSettingsFromFile(GetConfigurationFileName(arguments));
 
   bool ups_status_changed(false);
   ups = new Inverter(settings.device_name);
   // Logic to send 'raw commands' to the inverter.
-  if (!rawcmd.empty()) {
-    ups->ExecuteCmd(rawcmd);
+  if (arguments.IsSet("-r")) {
+    ups->ExecuteCmd(arguments.Get("-r"));
     // We can piggyback on either GetStatus() function to return our result, it doesn't matter which
     printf("Reply:  %s\n", ups->GetQpiriStatus().c_str());
     exit(0);
