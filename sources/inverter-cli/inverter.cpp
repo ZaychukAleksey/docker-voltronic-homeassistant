@@ -60,9 +60,9 @@ bool Inverter::Query(std::string_view cmd) {
 
   auto fd = open(device_.data(), O_RDWR | O_NONBLOCK);
   if (fd == -1) {
-    dlog("DEBUG:  Unable to open device file (errno=%d %s)", errno, strerror(errno));
-    sleep(10);
-    return false;
+    auto err_message("ERROR: Unable to open device " + device_ + ". " + strerror(errno) + '.');
+    dlog(err_message.c_str());
+    throw std::runtime_error(err_message);
   }
 
   // Once connected, set the baud rate and other serial config (Don't rely on this being correct on the system by default...)
