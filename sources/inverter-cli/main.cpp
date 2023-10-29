@@ -96,27 +96,26 @@ void getSettingsFile(std::string filename) {
 
 
 void PrintHelp() {
-  printf("\nUSAGE:  ./inverter_poller <args> [-r <command>], [-h | --help], [-1 | --run-once]\n\n");
-
-  printf("SUPPORTED ARGUMENTS:\n");
-  printf("          -r <raw-command>      TX 'raw' command to the inverter\n");
-  printf("          -h | --help           This Help Message\n");
-  printf("          -1 | --run-once       Runs one iteration on the inverter, and then exits\n");
-  printf("          -d                    Additional debugging\n\n");
-
-  printf("RAW COMMAND EXAMPLES (see protocol manual for complete list):\n");
-  printf("Set output source priority  POP00     (Utility first)\n");
-  printf("                            POP01     (Solar first)\n");
-  printf("                            POP02     (SBU)\n");
-  printf("Set charger priority        PCP00     (Utility first)\n");
-  printf("                            PCP01     (Solar first)\n");
-  printf("                            PCP02     (Solar and utility)\n");
-  printf("                            PCP03     (Solar only)\n");
-  printf("Set other commands          PEa / PDa (Enable/disable buzzer)\n");
-  printf("                            PEb / PDb (Enable/disable overload bypass)\n");
-  printf("                            PEj / PDj (Enable/disable power saving)\n");
-  printf("                            PEu / PDu (Enable/disable overload restart)\n");
-  printf("                            PEx / PDx (Enable/disable backlight)\n\n");
+  std::cout
+      << "\nUSAGE:  ./inverter_poller <args> [-r <command>], [-h | --help], [-1 | --run-once]\n\n"
+         "SUPPORTED ARGUMENTS:\n"
+         "          -r <raw-command>      TX 'raw' command to the inverter\n"
+         "          -h | --help           This Help Message\n"
+         "          -1 | --run-once       Runs one iteration on the inverter, and then exits\n"
+         "          -d                    Additional debugging\n\n"
+         "RAW COMMAND EXAMPLES (see protocol manual for complete list):\n"
+         "Set output source priority  POP00     (Utility first)\n"
+         "                            POP01     (Solar first)\n"
+         "                            POP02     (SBU)\n"
+         "Set charger priority        PCP00     (Utility first)\n"
+         "                            PCP01     (Solar first)\n"
+         "                            PCP02     (Solar and utility)\n"
+         "                            PCP03     (Solar only)\n"
+         "Set other commands          PEa / PDa (Enable/disable buzzer)\n"
+         "                            PEb / PDb (Enable/disable overload bypass)\n"
+         "                            PEj / PDj (Enable/disable power saving)\n"
+         "                            PEu / PDu (Enable/disable overload restart)\n"
+         "                            PEx / PDx (Enable/disable backlight)\n\n";
 }
 
 int main(int argc, char* argv[]) {
