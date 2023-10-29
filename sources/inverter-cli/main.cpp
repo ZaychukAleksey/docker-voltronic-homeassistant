@@ -8,12 +8,12 @@
 #include <cstdio>
 #include <cstdlib>
 #include <filesystem>
-#include <fstream>
+
 #include <iostream>
 #include <string>
 #include <vector>
 
-#include "inputparser.h"
+#include "configuration.h"
 #include "inverter.h"
 #include "logging.h"
 #include "main.h"
@@ -28,61 +28,6 @@ std::atomic_bool ups_qpiri_changed(false);
 std::atomic_bool ups_qpigs_changed(false);
 std::atomic_bool ups_qpiws_changed(false);
 std::atomic_bool ups_cmd_executed(false);
-
-struct Settings {
-  /// The device in OS, e.g. "/dev/hidraw0".
-  std::string device_name;
-
-  /// This allows you to modify the amperage in case the inverter is giving an incorrect
-  /// reading compared to measurement tools.  Normally this will remain '1'
-  float amperage_factor = 1.0f;
-
-  /// This allows you to modify the wattage in case the inverter is giving an incorrect
-  /// reading compared to measurement tools.  Normally this will remain '1'
-  float watt_factor = 1.0f;
-};
-
-float ToFloat(const std::string& option_name, const std::string& option_value) {
-  try {
-    return stof(option_value);
-  } catch (...) {
-    throw std::runtime_error("ERROR: incorrect value '" + option_value + "' for option '"
-                             + option_name + "'. Floating point value is expected.");
-  }
-}
-
-[[nodiscard]] Settings LoadSettingsFromFile(const std::string& filename) {
-  std::ifstream file(filename);
-  if (!file) {
-    throw std::runtime_error("ERROR: failed to open configuration file " + filename);
-  }
-
-  Settings result;
-  std::string line;
-  while (getline(file, line)) {
-    // Skip empty or commented lines (lines starting with '#').
-    const auto comment_position = line.find('#');
-    if (comment_position != std::string::npos || line.empty()) continue;
-
-    const auto delimiter = line.find('=');
-    if (delimiter == std::string::npos || delimiter == 0 || (delimiter == line.length() - 1)) {
-      throw std::runtime_error("ERROR: incorrect line in configuration file: \"" + line + '"');
-    }
-
-    auto parameter_name = line.substr(0, delimiter);
-    auto parameter_value = line.substr(delimiter + 1, std::string::npos - delimiter);
-    if (parameter_name == "device") {
-      result.device_name = parameter_value;
-    } else if (parameter_name == "amperage_factor") {
-      result.amperage_factor = ToFloat(parameter_name, parameter_value);
-    } else if (parameter_name == "watt_factor") {
-      result.watt_factor = ToFloat(parameter_name, parameter_value);
-    } else {
-      throw std::runtime_error("ERROR: unknown configuration parameter: " + parameter_name);
-    }
-  }
-  return result;
-}
 
 
 void PrintHelp() {
@@ -109,7 +54,7 @@ void PrintHelp() {
          "                            PEx / PDx (Enable/disable backlight)\n\n";
 }
 
-const std::string& GetConfigurationFileName(const InputParser& cmd_args) {
+const std::string& GetConfigurationFileName(const CommandLineArguments& cmd_args) {
   static std::string kConfigurationFile = "./inverter.conf";
   return cmd_args.CmdOptionExists("-c")
          ? cmd_args.GetCmdOption("-c")
@@ -168,7 +113,7 @@ int main(int argc, char* argv[]) {
   float batt_redischarge_voltage;
 
   // Get command flag settings from the arguments (if any)
-  InputParser cmdArgs(argc, argv);
+  CommandLineArguments cmdArgs(argc, argv);
   const auto& rawcmd = cmdArgs.GetCmdOption("-r");
   if (cmdArgs.CmdOptionExists("-h") || cmdArgs.CmdOptionExists("--help")) {
     PrintHelp();

@@ -10,7 +10,7 @@ target_sources(inverter_poller
  PRIVATE
   main.cpp
 
-  inputparser.cpp
+  configuration.cpp
   inverter.cpp
   logging.cpp
 )
