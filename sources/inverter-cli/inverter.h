@@ -26,6 +26,8 @@ class Inverter {
   void ExecuteCmd(std::string_view cmd);
 
  private:
+  int Connect();
+
   void SetMode(char newmode);
   bool Query(std::string_view cmd);
 

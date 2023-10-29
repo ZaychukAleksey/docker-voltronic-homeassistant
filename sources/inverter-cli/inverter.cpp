@@ -10,21 +10,15 @@
 
 namespace {
 
-uint16_t CalCrcHalf(uint8_t* pin, uint8_t len) {
-  uint16_t crc;
-
-  uint8_t da;
-  uint8_t* ptr;
-  uint8_t bCRCHign;
-  uint8_t bCRCLow;
-
-  uint16_t crc_ta[16] = {
+uint16_t CalCrcHalf(const uint8_t* pin, uint8_t len) {
+  constexpr uint16_t crc_ta[16] = {
       0x0000, 0x1021, 0x2042, 0x3063, 0x4084, 0x50a5, 0x60c6, 0x70e7,
       0x8108, 0x9129, 0xa14a, 0xb16b, 0xc18c, 0xd1ad, 0xe1ce, 0xf1ef
   };
-  ptr = pin;
-  crc = 0;
+  const uint8_t* ptr = pin;
+  uint16_t crc = 0;
 
+  uint8_t da;
   while (len-- != 0) {
     da = ((uint8_t)(crc >> 8)) >> 4;
     crc <<= 4;
@@ -32,20 +26,20 @@ uint16_t CalCrcHalf(uint8_t* pin, uint8_t len) {
     da = ((uint8_t)(crc >> 8)) >> 4;
     crc <<= 4;
     crc ^= crc_ta[da ^ (*ptr & 0x0f)];
-    ptr++;
+    ++ptr;
   }
-  bCRCLow = crc;
-  bCRCHign = (uint8_t)(crc >> 8);
+  uint8_t bCRCLow = crc;
+  uint8_t bCRCHign = (uint8_t)(crc >> 8);
   if (bCRCLow == 0x28 || bCRCLow == 0x0d || bCRCLow == 0x0a)
     bCRCLow++;
   if (bCRCHign == 0x28 || bCRCHign == 0x0d || bCRCHign == 0x0a)
     bCRCHign++;
   crc = ((uint16_t) bCRCHign) << 8;
   crc += bCRCLow;
-  return (crc);
+  return crc;
 }
 
-bool CheckCRC(unsigned char* data, int len) {
+bool CheckCRC(const unsigned char* data, int len) {
   uint16_t crc = CalCrcHalf(data, len - 3);
   return data[len - 3] == (crc >> 8) && data[len - 2] == (crc & 0xff);
 }
@@ -149,10 +143,9 @@ int Inverter::GetMode() const {
   return 0;  // Unknown
 }
 
-bool Inverter::Query(std::string_view cmd) {
-  time_t started;
-  int i = 0;
-
+/// @returns file descriptor of the device if opened successfully.
+/// @throws runtime_error if for some reason connection failed.
+int Inverter::Connect() {
   auto fd = open(device_.data(), O_RDWR | O_NONBLOCK);
   if (fd == -1) {
     auto err_message("ERROR: Unable to open device " + device_ + ". " + strerror(errno) + '.');
@@ -160,14 +153,11 @@ bool Inverter::Query(std::string_view cmd) {
     throw std::runtime_error(err_message);
   }
 
-  // Once connected, set the baud rate and other serial config (Don't rely on this being correct on the system by default...)
-  speed_t baud = B2400;
-
-  // Speed settings (in this case, 2400 8N1)
+  // Set the baud rate and other serial config. Settings are: 2400 8N1.
   struct termios settings;
   tcgetattr(fd, &settings);
 
-  cfsetospeed(&settings, baud);      // baud rate
+  cfsetospeed(&settings, B2400);     // baud rate
   settings.c_cflag &= ~PARENB;       // no parity
   settings.c_cflag &= ~CSTOPB;       // 1 stop bit
   settings.c_cflag &= ~CSIZE;
@@ -177,11 +167,16 @@ bool Inverter::Query(std::string_view cmd) {
 
   tcsetattr(fd, TCSANOW, &settings); // apply the settings
   tcflush(fd, TCOFLUSH);
+}
 
-  // ---------------------------------------------------------------
+bool Inverter::Query(std::string_view cmd) {
+  time_t started;
+  int i = 0;
+
+  const auto device = Connect();
 
   // Generating CRC for a command
-  uint16_t crc = CalCrcHalf((uint8_t*) cmd.data(), cmd.length());
+  uint16_t crc = CalCrcHalf(reinterpret_cast<const uint8_t*>(cmd.data()), cmd.length());
   auto n = cmd.length();
   memcpy(&buf_, cmd.data(), n);
   dlog("DEBUG:  Current CRC: %X %X", crc >> 8, crc & 0xff);
@@ -207,13 +202,15 @@ bool Inverter::Query(std::string_view cmd) {
 
   // Send the command (or part of the command if longer than chunk_size)
   int chunk_size = 8;
-  if (n < chunk_size) // Send in chunks of 8 bytes, if less than 8 bytes to send... just send that
+  // Send in chunks of 8 bytes, if less than 8 bytes to send... just send that
+  if (n < chunk_size) {
     chunk_size = n;
+  }
   int bytes_sent = 0;
   int remaining = n;
 
   while (remaining > 0) {
-    ssize_t written = write(fd, &buf_[bytes_sent], chunk_size);
+    auto written = write(device, &buf_[bytes_sent], chunk_size);
     bytes_sent += written;
     if (remaining - written >= 0)
       remaining -= written;
@@ -238,7 +235,7 @@ bool Inverter::Query(std::string_view cmd) {
   char* endbuf = 0;
   do {
     // According to protocol manual, it appears no query should ever exceed 120 byte size in response
-    n = read(fd, (void*) buf_ + i, 120 - i);
+    n = read(device, (void*) buf_ + i, 120 - i);
     if (n < 0) {
       // Wait 5 secs before timeout
       if (time(NULL) - started > 5) {
@@ -260,7 +257,7 @@ bool Inverter::Query(std::string_view cmd) {
 
     //log("DEBUG:  %s Current buffer: %s", cmd, startbuf);
   } while (endbuf == nullptr);     // Still haven't found end <cr> char as long as pointer is null
-  close(fd);
+  close(device);
 
   int replysize = endbuf - startbuf + 1;
   dlog("DEBUG:  Found reply <cr> at byte: %d", replysize);
