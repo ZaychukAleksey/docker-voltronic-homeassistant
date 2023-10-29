@@ -206,10 +206,11 @@ int main(int argc, char* argv[]) {
     exit(0);
   }
 
-  if (runOnce)
-    ups->poll();
-  else
-    ups->runMultiThread();
+  if (runOnce) {
+    ups->Poll();
+  } else {
+    ups->RunMultiThread();
+  }
 
   while (true) {
     log("DEBUG:  Start loop");
@@ -370,7 +371,7 @@ int main(int argc, char* argv[]) {
   }
 
   if (ups) {
-    ups->terminateThread();
+    ups->TerminateThread();
     delete ups;
   }
   return 0;

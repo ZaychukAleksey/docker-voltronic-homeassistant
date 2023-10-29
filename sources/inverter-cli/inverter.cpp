@@ -9,65 +9,80 @@
 #include "logging.h"
 #include "main.h"
 
-Inverter::Inverter(std::string devicename) {
-  device = devicename;
-  status1[0] = 0;
-  status2[0] = 0;
-  warnings[0] = 0;
-  mode = 0;
+
+Inverter::Inverter(const std::string& device)
+    : device_(device) {
+  status1_[0] = 0;
+  status2_[0] = 0;
+  warnings_[0] = 0;
+  mode_ = 0;
 }
 
 std::string* Inverter::GetQpigsStatus() {
-  m.lock();
-  std::string* result = new std::string(status1);
-  m.unlock();
+  m_.lock();
+  std::string* result = new std::string(status1_);
+  m_.unlock();
   return result;
 }
 
-std::string *Inverter::GetQpiriStatus() {
-  m.lock();
-  std::string *result = new std::string(status2);
-  m.unlock();
+std::string* Inverter::GetQpiriStatus() {
+  m_.lock();
+  std::string* result = new std::string(status2_);
+  m_.unlock();
   return result;
 }
 
-std::string *Inverter::GetWarnings() {
-  m.lock();
-  std::string *result = new std::string(warnings);
-  m.unlock();
+std::string* Inverter::GetWarnings() {
+  m_.lock();
+  std::string* result = new std::string(warnings_);
+  m_.unlock();
   return result;
 }
 
 void Inverter::SetMode(char newmode) {
-  m.lock();
-  if (mode && newmode != mode)
+  m_.lock();
+  if (mode_ && newmode != mode_) {
     ups_status_changed = true;
-  mode = newmode;
-  m.unlock();
+  }
+  mode_ = newmode;
+  m_.unlock();
 }
 
 int Inverter::GetMode() {
   int result;
-  m.lock();
-  switch (mode) {
-    case 'P': result = 1;   break;  // Power_On
-    case 'S': result = 2;   break;  // Standby
-    case 'L': result = 3;   break;  // Line
-    case 'B': result = 4;   break;  // Battery
-    case 'F': result = 5;   break;  // Fault
-    case 'H': result = 6;   break;  // Power_Saving
-    default:  result = 0;   break;  // Unknown
+  m_.lock();
+  switch (mode_) {
+    case 'P':
+      result = 1;
+      break;  // Power_On
+    case 'S':
+      result = 2;
+      break;  // Standby
+    case 'L':
+      result = 3;
+      break;  // Line
+    case 'B':
+      result = 4;
+      break;  // Battery
+    case 'F':
+      result = 5;
+      break;  // Fault
+    case 'H':
+      result = 6;
+      break;  // Power_Saving
+    default:
+      result = 0;
+      break;  // Unknown
   }
-  m.unlock();
+  m_.unlock();
   return result;
 }
 
-bool Inverter::query(const char *cmd) {
+bool Inverter::Query(std::string_view cmd) {
   time_t started;
-  int fd;
-  int i = 0, n;
+  int i = 0;
 
-  fd = open(this->device.data(), O_RDWR | O_NONBLOCK);  // device is provided by program arg (usually /dev/hidraw0)
+  auto fd = open(device_.data(), O_RDWR | O_NONBLOCK);
   if (fd == -1) {
     log("DEBUG:  Unable to open device file (errno=%d %s)", errno, strerror(errno));
     sleep(10);
@@ -86,7 +101,7 @@ bool Inverter::query(const char *cmd) {
   settings.c_cflag &= ~CSTOPB;       // 1 stop bit
   settings.c_cflag &= ~CSIZE;
   settings.c_cflag |= CS8 | CLOCAL;  // 8 bits
-  // settings.c_lflag = ICANON;         // canonical mode
+  // settings.c_lflag = ICANON;         // canonical mode_
   settings.c_oflag &= ~OPOST;        // raw output
 
   tcsetattr(fd, TCSANOW, &settings); // apply the settings
@@ -95,13 +110,13 @@ bool Inverter::query(const char *cmd) {
   // ---------------------------------------------------------------
 
   // Generating CRC for a command
-  uint16_t crc = cal_crc_half((uint8_t*)cmd, strlen(cmd));
-  n = strlen(cmd);
-  memcpy(&buf, cmd, n);
+  uint16_t crc = CalCrcHalf((uint8_t*) cmd.data(), cmd.length());
+  auto n = cmd.length();
+  memcpy(&buf_, cmd.data(), n);
   log("DEBUG:  Current CRC: %X %X", crc >> 8, crc & 0xff);
-  buf[n++] = crc >> 8;
-  buf[n++] = crc & 0xff;
-  buf[n++] = 0x0d;
+  buf_[n++] = crc >> 8;
+  buf_[n++] = crc & 0xff;
+  buf_[n++] = 0x0d;
 
   // Send buffer in hex
   char messagestart[128];
@@ -110,7 +125,7 @@ bool Inverter::query(const char *cmd) {
   messageptr += strlen(messagestart);
 
   for (int j = 0; j < n; j++) {
-    int size = sprintf(messageptr, "%02x ", buf[j]);
+    int size = sprintf(messageptr, "%02x ", buf_[j]);
     messageptr += 3;
   }
   log("%s)", messagestart);
@@ -127,7 +142,7 @@ bool Inverter::query(const char *cmd) {
   int remaining = n;
 
   while (remaining > 0) {
-    ssize_t written = write(fd, &buf[bytes_sent], chunk_size);
+    ssize_t written = write(fd, &buf_[bytes_sent], chunk_size);
     bytes_sent += written;
     if (remaining - written >= 0)
       remaining -= written;
@@ -137,7 +152,8 @@ bool Inverter::query(const char *cmd) {
     if (written < 0)
       log("DEBUG:  Write command failed, error number %d was returned", errno);
     else
-      log("DEBUG:  %d bytes written, %d bytes sent, %d bytes remaining", written, bytes_sent, remaining);
+      log("DEBUG:  %d bytes written, %d bytes sent, %d bytes remaining", written, bytes_sent,
+          remaining);
 
     chunk_size = remaining;
     usleep(50000);   // Sleep 50ms before sending another 8 bytes of info
@@ -147,149 +163,143 @@ bool Inverter::query(const char *cmd) {
 
   // Instead of using a fixed size for expected response length, lets find it
   // by searching for the first returned <cr> char instead.
-  char *startbuf = 0;
-  char *endbuf = 0;
+  char* startbuf = 0;
+  char* endbuf = 0;
   do {
     // According to protocol manual, it appears no query should ever exceed 120 byte size in response
-    n = read(fd, (void*)buf+i, 120 - i);
-    if (n < 0)
-    {
-      if (time(NULL) - started > 5)     // Wait 5 secs before timeout
-      {
+    n = read(fd, (void*) buf_ + i, 120 - i);
+    if (n < 0) {
+      // Wait 5 secs before timeout
+      if (time(NULL) - started > 5) {
         log("DEBUG:  %s read timeout", cmd);
         break;
-      }
-      else
-      {
+      } else {
         usleep(50000);  // sleep 50ms
         continue;
       }
     }
     i += n;
-    buf[i] = '\0';  // terminate what we have so far with a null string
+    buf_[i] = '\0';  // terminate what we have so far with a null string
     log("DEBUG:  %d bytes read, %d total bytes:  %02x %02x %02x %02x %02x %02x %02x %02x",
-            n, i, buf[i-8], buf[i-7], buf[i-6], buf[i-5], buf[i-4], buf[i-3], buf[i-2], buf[i-1]);
+        n, i, buf_[i - 8], buf_[i - 7], buf_[i - 6], buf_[i - 5], buf_[i - 4], buf_[i - 3],
+        buf_[i - 2], buf_[i - 1]);
 
-    startbuf = (char *)&buf[0];
+    startbuf = (char*) &buf_[0];
     endbuf = strchr(startbuf, '\r');
 
     //log("DEBUG:  %s Current buffer: %s", cmd, startbuf);
-  } while (endbuf == NULL);     // Still haven't found end <cr> char as long as pointer is null
+  } while (endbuf == nullptr);     // Still haven't found end <cr> char as long as pointer is null
   close(fd);
 
   int replysize = endbuf - startbuf + 1;
   log("DEBUG:  Found reply <cr> at byte: %d", replysize);
 
-  if (buf[0]!='(' || buf[replysize-1]!=0x0d) {
-    log("DEBUG:  %s: incorrect buffer start/stop bytes.  Buffer: %s", cmd, buf);
+  if (buf_[0] != '(' || buf_[replysize - 1] != 0x0d) {
+    log("DEBUG:  %s: incorrect buffer start/stop bytes.  Buffer: %s", cmd, buf_);
     return false;
   }
-  if (!(CheckCRC(buf, replysize))) {
-    log("DEBUG:  %s: CRC Failed!  Reply size: %d  Buffer: %s", cmd, replysize, buf);
+  if (!(CheckCRC(buf_, replysize))) {
+    log("DEBUG:  %s: CRC Failed!  Reply size: %d  Buffer: %s", cmd, replysize, buf_);
     return false;
   }
-  buf[replysize-3] = '\0';      // Null-terminating on first CRC byte
-  log("DEBUG:  %s: %d bytes read: %s", cmd, i, buf);
+  buf_[replysize - 3] = '\0';      // Null-terminating on first CRC byte
+  log("DEBUG:  %s: %d bytes read: %s", cmd, i, buf_);
 
   log("DEBUG:  %s query finished", cmd);
   return true;
 }
 
-void Inverter::poll() {
+void Inverter::Poll() {
   extern const int runOnce;
 
   while (true) {
-    // Reading mode
+    // Reading mode_
     if (!ups_qmod_changed) {
-      if (query("QMOD") &&
-    strcmp((char *)&buf[1], "NAK") != 0) {
-        SetMode(buf[1]);
+      if (Query("QMOD") && strcmp((char*) &buf_[1], "NAK") != 0) {
+        SetMode(buf_[1]);
         ups_qmod_changed = true;
       }
     }
 
     // Reading QPIGS status
     if (!ups_qpigs_changed) {
-      if (query("QPIGS") &&
-    strcmp((char *)&buf[1], "NAK") != 0) {
-        m.lock();
-        strcpy(status1, (const char*)buf+1);
-        m.unlock();
+      if (Query("QPIGS") && strcmp((char*) &buf_[1], "NAK") != 0) {
+        m_.lock();
+        strcpy(status1_, (const char*) buf_ + 1);
+        m_.unlock();
         ups_qpigs_changed = true;
       }
     }
 
     // Reading QPIRI status
     if (!ups_qpiri_changed) {
-      if (query("QPIRI") &&
-    strcmp((char *)&buf[1], "NAK") != 0) {
-        m.lock();
-        strcpy(status2, (const char*)buf+1);
-        m.unlock();
+      if (Query("QPIRI") && strcmp((char*) &buf_[1], "NAK") != 0) {
+        m_.lock();
+        strcpy(status2_, (const char*) buf_ + 1);
+        m_.unlock();
         ups_qpiri_changed = true;
       }
     }
 
-    // Get any device warnings...
+    // Get any device warnings_...
     if (!ups_qpiws_changed) {
-      if (query("QPIWS") &&
-    strcmp((char *)&buf[1], "NAK") != 0) {
-        m.lock();
-        strcpy(warnings, (const char*)buf+1);
-        m.unlock();
+      if (Query("QPIWS") && strcmp((char*) &buf_[1], "NAK") != 0) {
+        m_.lock();
+        strcpy(warnings_, (const char*) buf_ + 1);
+        m_.unlock();
         ups_qpiws_changed = true;
       }
     }
-    if (quit_thread || runOnce) return;
+    if (quit_thread_ || runOnce) return;
     sleep(5);
   }
 }
 
-void Inverter::ExecuteCmd(const std::string cmd) {
+void Inverter::ExecuteCmd(std::string_view cmd) {
   // Sending any command raw
-  if (query(cmd.data())) {
-    m.lock();
-    strcpy(status2, (const char*)buf+1);
-    m.unlock();
+  if (Query(cmd.data())) {
+    m_.lock();
+    strcpy(status2_, (const char*) buf_ + 1);
+    m_.unlock();
   }
 }
 
-uint16_t Inverter::cal_crc_half(uint8_t *pin, uint8_t len) {
+uint16_t Inverter::CalCrcHalf(uint8_t* pin, uint8_t len) {
   uint16_t crc;
 
   uint8_t da;
-  uint8_t *ptr;
+  uint8_t* ptr;
   uint8_t bCRCHign;
   uint8_t bCRCLow;
 
-  uint16_t crc_ta[16]= {
-    0x0000,0x1021,0x2042,0x3063,0x4084,0x50a5,0x60c6,0x70e7,
-    0x8108,0x9129,0xa14a,0xb16b,0xc18c,0xd1ad,0xe1ce,0xf1ef
+  uint16_t crc_ta[16] = {
+      0x0000, 0x1021, 0x2042, 0x3063, 0x4084, 0x50a5, 0x60c6, 0x70e7,
+      0x8108, 0x9129, 0xa14a, 0xb16b, 0xc18c, 0xd1ad, 0xe1ce, 0xf1ef
   };
-  ptr=pin;
-  crc=0;
+  ptr = pin;
+  crc = 0;
 
-  while(len--!=0) {
-    da=((uint8_t)(crc>>8))>>4;
-    crc<<=4;
-    crc^=crc_ta[da^(*ptr>>4)];
-    da=((uint8_t)(crc>>8))>>4;
-    crc<<=4;
-    crc^=crc_ta[da^(*ptr&0x0f)];
+  while (len-- != 0) {
+    da = ((uint8_t)(crc >> 8)) >> 4;
+    crc <<= 4;
+    crc ^= crc_ta[da ^ (*ptr >> 4)];
+    da = ((uint8_t)(crc >> 8)) >> 4;
+    crc <<= 4;
+    crc ^= crc_ta[da ^ (*ptr & 0x0f)];
     ptr++;
   }
   bCRCLow = crc;
-  bCRCHign= (uint8_t)(crc>>8);
-  if(bCRCLow==0x28||bCRCLow==0x0d||bCRCLow==0x0a)
+  bCRCHign = (uint8_t)(crc >> 8);
+  if (bCRCLow == 0x28 || bCRCLow == 0x0d || bCRCLow == 0x0a)
     bCRCLow++;
-  if(bCRCHign==0x28||bCRCHign==0x0d||bCRCHign==0x0a)
+  if (bCRCHign == 0x28 || bCRCHign == 0x0d || bCRCHign == 0x0a)
     bCRCHign++;
-  crc = ((uint16_t)bCRCHign)<<8;
+  crc = ((uint16_t) bCRCHign) << 8;
   crc += bCRCLow;
-  return(crc);
+  return (crc);
 }
 
-bool Inverter::CheckCRC(unsigned char *data, int len) {
-  uint16_t crc = cal_crc_half(data, len-3);
-  return data[len-3]==(crc>>8) && data[len-2]==(crc&0xff);
+bool Inverter::CheckCRC(unsigned char* data, int len) {
+  uint16_t crc = CalCrcHalf(data, len - 3);
+  return data[len - 3] == (crc >> 8) && data[len - 2] == (crc & 0xff);
 }
