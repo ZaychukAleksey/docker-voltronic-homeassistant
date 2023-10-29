@@ -44,32 +44,17 @@ void Inverter::SetMode(char newmode) {
 }
 
 int Inverter::GetMode() {
-  int result;
   std::lock_guard lock(mutex_);
   switch (mode_) {
-    case 'P':
-      result = 1;
-      break;  // Power_On
-    case 'S':
-      result = 2;
-      break;  // Standby
-    case 'L':
-      result = 3;
-      break;  // Line
-    case 'B':
-      result = 4;
-      break;  // Battery
-    case 'F':
-      result = 5;
-      break;  // Fault
-    case 'H':
-      result = 6;
-      break;  // Power_Saving
-    default:
-      result = 0;
-      break;  // Unknown
+    case 'P': return 1;  // Power_On
+    case 'S': return 2;  // Standby
+    case 'L': return 3;  // Line
+    case 'B': return 4;  // Battery
+    case 'F': return 5;  // Fault
+    case 'H': return 6;  // Power_Saving
+    default: break;
   }
-  return result;
+  return 0;  // Unknown
 }
 
 bool Inverter::Query(std::string_view cmd) {
