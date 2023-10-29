@@ -11,8 +11,8 @@ class CommandLineArguments {
  public:
   CommandLineArguments(int argc, char** argv);
 
-  /// @returns true if the option was set via command line arguments, false otherwise.
-  bool IsSet(std::string_view option) const;
+  /// @returns true if the @option (or its alias @option_alias) was set via command line arguments.
+  bool IsSet(std::string_view option, std::string_view option_alias = "") const;
 
   /// @returns option value if the option was provided.
   /// @throws runtime_exception if the option wasn't provided.

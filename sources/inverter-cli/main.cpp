@@ -6,21 +6,16 @@
 
 #include <atomic>
 #include <cstdio>
-#include <cstdlib>
 #include <filesystem>
 
 #include <iostream>
 #include <string>
-#include <vector>
 
 #include "configuration.h"
 #include "inverter.h"
 #include "logging.h"
 #include "main.h"
 
-
-bool runOnce = false;
-Inverter* ups = nullptr;
 std::atomic_bool ups_status_changed(false);
 std::atomic_bool ups_qmod_changed(false);
 std::atomic_bool ups_qpiri_changed(false);
@@ -111,33 +106,31 @@ int main(int argc, char* argv[]) {
 
   // Get command flag settings from the arguments (if any)
   CommandLineArguments arguments(argc, argv);
-  if (arguments.IsSet("-h") || arguments.IsSet("--help")) {
+  if (arguments.IsSet("-h", "--help")) {
     PrintHelp();
     return 0;
   }
   if (arguments.IsSet("-d")) {
     SetDebugMode();
   }
-  if (arguments.IsSet("-1") || arguments.IsSet("--run-once")) {
-    runOnce = true;
-  }
 
   auto settings = LoadSettingsFromFile(GetConfigurationFileName(arguments));
 
   bool ups_status_changed(false);
-  ups = new Inverter(settings.device_name);
+  Inverter inverter(settings.device_name);
   // Logic to send 'raw commands' to the inverter.
   if (arguments.IsSet("-r")) {
-    ups->ExecuteCmd(arguments.Get("-r"));
+    inverter.ExecuteCmd(arguments.Get("-r"));
     // We can piggyback on either GetStatus() function to return our result, it doesn't matter which
-    printf("Reply:  %s\n", ups->GetQpiriStatus().c_str());
-    exit(0);
+    printf("Reply:  %s\n", inverter.GetQpiriStatus().c_str());
+    return 0;
   }
 
-  if (runOnce) {
-    ups->Poll();
+  const bool run_once = arguments.IsSet("-1", "--run-once");
+  if (run_once) {
+    inverter.Poll();
   } else {
-    ups->RunMultiThread();
+    inverter.StartBackgroundPolling();
   }
 
   while (true) {
@@ -145,7 +138,7 @@ int main(int argc, char* argv[]) {
     // If inverter mode changes print it to screen
 
     if (ups_status_changed) {
-      int mode = ups->GetMode();
+      int mode = inverter.GetMode();
       if (mode)
         dlog("INVERTER: Mode Currently set to: %d", mode);
 
@@ -158,10 +151,10 @@ int main(int argc, char* argv[]) {
       ups_qpiri_changed = false;
       ups_qpigs_changed = false;
 
-      int mode = ups->GetMode();
-      const auto reply1 = ups->GetQpigsStatus();
-      const auto reply2 = ups->GetQpiriStatus();
-      const auto warnings = ups->GetWarnings();
+      int mode = inverter.GetMode();
+      const auto reply1 = inverter.GetQpigsStatus();
+      const auto reply2 = inverter.GetQpiriStatus();
+      const auto warnings = inverter.GetWarnings();
 
       // Parse and display values, QPIGS, * means contained in output, ^ is not included in output
       sscanf(reply1.c_str(), "%f %f %f %f %d %d %d %d %f %d %d %d %f %f %f %d %s %d %d %d %s",
@@ -279,20 +272,16 @@ int main(int argc, char* argv[]) {
       printf("  \"Warnings\":\"%s\"\n", warnings.c_str());     //
       printf("}\n");
 
-      if (runOnce) {
-        // there is no thread -- ups->terminateThread();
-        // Do once and exit instead of loop endlessly
+      if (run_once) {
         dlog("INVERTER: All queries complete, exiting loop.");
-        exit(0);
+        return 0;
       }
     }
 
     sleep(1);
   }
 
-  if (ups) {
-    ups->TerminateThread();
-    delete ups;
-  }
+  // FIXME this isn't reachable.
+  inverter.StopBackgroundPolling();
   return 0;
 }

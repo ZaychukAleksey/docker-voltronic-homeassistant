@@ -17,6 +17,20 @@ Inverter::Inverter(const std::string& device)
   warnings_[0] = 0;
 }
 
+void Inverter::StartBackgroundPolling(std::size_t polling_interval_in_seconds) {
+  polling_thread_ = std::thread([this, polling_interval = polling_interval_in_seconds]() {
+    while (!polling_thread_termination_requested_) {
+      Poll();
+      sleep(polling_interval);
+    }
+  });
+}
+
+void Inverter::StopBackgroundPolling() {
+  polling_thread_termination_requested_ = true;
+  polling_thread_.join();
+}
+
 std::string Inverter::GetQpigsStatus() {
   std::lock_guard lock(mutex_);
   return {status1_};
@@ -186,45 +200,39 @@ bool Inverter::Query(std::string_view cmd) {
 }
 
 void Inverter::Poll() {
-  extern const int runOnce;
-
-  while (true) {
-    // Reading mode_
-    if (!ups_qmod_changed) {
-      if (Query("QMOD") && strcmp((char*) &buf_[1], "NAK") != 0) {
-        SetMode(buf_[1]);
-        ups_qmod_changed = true;
-      }
+  // Reading mode_
+  if (!ups_qmod_changed) {
+    if (Query("QMOD") && strcmp((char*) &buf_[1], "NAK") != 0) {
+      SetMode(buf_[1]);
+      ups_qmod_changed = true;
     }
+  }
 
-    // Reading QPIGS status
-    if (!ups_qpigs_changed) {
-      if (Query("QPIGS") && strcmp((char*) &buf_[1], "NAK") != 0) {
-        std::lock_guard lock(mutex_);
-        strcpy(status1_, (const char*) buf_ + 1);
-        ups_qpigs_changed = true;
-      }
+  // Reading QPIGS status
+  if (!ups_qpigs_changed) {
+    if (Query("QPIGS") && strcmp((char*) &buf_[1], "NAK") != 0) {
+      std::lock_guard lock(mutex_);
+      strcpy(status1_, (const char*) buf_ + 1);
+      ups_qpigs_changed = true;
     }
+  }
 
-    // Reading QPIRI status
-    if (!ups_qpiri_changed) {
-      if (Query("QPIRI") && strcmp((char*) &buf_[1], "NAK") != 0) {
-        std::lock_guard lock(mutex_);
-        strcpy(status2_, (const char*) buf_ + 1);
-        ups_qpiri_changed = true;
-      }
+  // Reading QPIRI status
+  if (!ups_qpiri_changed) {
+    if (Query("QPIRI") && strcmp((char*) &buf_[1], "NAK") != 0) {
+      std::lock_guard lock(mutex_);
+      strcpy(status2_, (const char*) buf_ + 1);
+      ups_qpiri_changed = true;
     }
+  }
 
-    // Get any device warnings_...
-    if (!ups_qpiws_changed) {
-      if (Query("QPIWS") && strcmp((char*) &buf_[1], "NAK") != 0) {
-        std::lock_guard lock(mutex_);
-        strcpy(warnings_, (const char*) buf_ + 1);
-        ups_qpiws_changed = true;
-      }
+  // Get any device warnings_...
+  if (!ups_qpiws_changed) {
+    if (Query("QPIWS") && strcmp((char*) &buf_[1], "NAK") != 0) {
+      std::lock_guard lock(mutex_);
+      strcpy(warnings_, (const char*) buf_ + 1);
+      ups_qpiws_changed = true;
     }
-    if (quit_thread_ || runOnce) return;
-    sleep(5);
   }
 }
 

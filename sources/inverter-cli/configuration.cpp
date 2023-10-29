@@ -18,8 +18,14 @@ const std::string& CommandLineArguments::Get(std::string_view option) const {
   throw std::runtime_error("ERROR: option '" + std::string(option) + "' hasn't been specified.");
 }
 
-bool CommandLineArguments::IsSet(std::string_view option) const {
-  return std::find(tokens_.begin(), tokens_.end(), option) != tokens_.end();
+bool CommandLineArguments::IsSet(std::string_view option, std::string_view option_alias) const {
+  if (std::find(tokens_.begin(), tokens_.end(), option) != tokens_.end()) {
+    return true;
+  }
+  if (option_alias.empty()) {
+    return false;
+  }
+  return std::find(tokens_.begin(), tokens_.end(), option_alias) != tokens_.end();
 }
 
 static float ToFloat(const std::string& option_name, const std::string& option_value) {
