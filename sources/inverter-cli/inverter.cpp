@@ -75,9 +75,34 @@ void Inverter::StopBackgroundPolling() {
   polling_thread_.join();
 }
 
-std::string Inverter::GetQpigsStatus() const {
+QpigsData Inverter::GetQpigsStatus() const {
   std::lock_guard lock(mutex_);
-  return {status1_};
+
+  QpigsData result;
+  // Parse and display values, QPIGS, * means contained in output, ^ is not included in output
+  sscanf(status1_, "%f %f %f %f %d %d %d %d %f %d %d %d %f %f %f %d %s %d %d %d %s",
+         &result.grid_voltage,
+         &result.grid_frequency,
+         &result.ac_output_voltage,
+         &result.ac_output_frequency,
+         &result.ac_output_apparent_power,
+         &result.ac_output_active_power,
+         &result.output_load_percent,
+         &result.bus_voltage,
+         &result.battery_voltage,
+         &result.battery_charging_current,
+         &result.battery_capacity,
+         &result.inverter_heat_sink_temperature,
+         &result.pv_input_current_for_battery,
+         &result.pv_input_voltage,
+         &result.battery_voltage_from_scc,
+         &result.battery_discharge_current,
+         &result.device_status,
+         &result.battery_voltage_offset_for_fans_on,
+         &result.eeprom_version,
+         &result.pv_charging_power,
+         &result.device_status_2);
+  return result;
 }
 
 std::string Inverter::GetQpiriStatus() const {

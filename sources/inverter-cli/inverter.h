@@ -5,6 +5,8 @@
 #include <string_view>
 #include <thread>
 
+#include "inverter_data.h"
+
 class Inverter {
  public:
   /// @param device is the device in OS, e.g. "/dev/hidraw0".
@@ -16,8 +18,10 @@ class Inverter {
   void StartBackgroundPolling(std::size_t polling_interval_in_seconds = 5);
   void StopBackgroundPolling();
 
+  /// Device Rated Information inquiry.
   std::string GetQpiriStatus() const;
-  std::string GetQpigsStatus() const;
+  /// Device general status parameters inquiry.
+  QpigsData GetQpigsStatus() const;
   std::string GetWarnings() const;
 
   int GetMode() const;

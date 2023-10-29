@@ -82,32 +82,6 @@ int main(int argc, char* argv[]) {
     inverter.StartBackgroundPolling();
   }
 
-  // Reply1
-  float voltage_grid;
-  float freq_grid;
-  float voltage_out;
-  float freq_out;
-  int load_va;
-  int load_watt;
-  int load_percent;
-  int voltage_bus;
-  float voltage_batt;
-  int batt_charge_current;
-  int batt_capacity;
-  int temp_heatsink;
-  float pv_input_current;
-  float pv_input_voltage;
-  float pv_input_watts;
-// float pv_input_watthour;
-// float load_watthour = 0;
-  float scc_voltage;
-  int batt_discharge_current;
-  char device_status[8];
-  int battery_voltage_offset_for_fans_on;
-  int eeprom_version;
-  int pv_charging_power;
-  char device_status2[3];
-
   // Reply2
   float grid_voltage_rating;
   float grid_current_rating;
@@ -150,33 +124,10 @@ int main(int argc, char* argv[]) {
       ups_qpigs_changed = false;
 
       int mode = inverter.GetMode();
-      const auto reply1 = inverter.GetQpigsStatus();
+      const auto qpigs = inverter.GetQpigsStatus();
       const auto reply2 = inverter.GetQpiriStatus();
       const auto warnings = inverter.GetWarnings();
 
-      // Parse and display values, QPIGS, * means contained in output, ^ is not included in output
-      sscanf(reply1.c_str(), "%f %f %f %f %d %d %d %d %f %d %d %d %f %f %f %d %s %d %d %d %s",
-             &voltage_grid,          // * Grid voltage
-             &freq_grid,             // * Grid frequency
-             &voltage_out,           // * AC output voltage
-             &freq_out,              // * AC output frequency
-             &load_va,               // * AC output apparent power (VA)
-             &load_watt,             // * AC output active power (Watt)
-             &load_percent,          // * Output load percent - Maximum of W% or VA%., VA% is a percent of apparent power., W% is a percent of active power.
-             &voltage_bus,           // * BUS voltage
-             &voltage_batt,          // * Battery voltage
-             &batt_charge_current,   // * Battery charging current
-             &batt_capacity,         // * Battery capacity
-             &temp_heatsink,         // * Inverter heat sink temperature
-             &pv_input_current,      // * PV Input current for battery.
-             &pv_input_voltage,      // * PV Input voltage 1
-             &scc_voltage,           // * Battery voltage from SCC (V)
-             &batt_discharge_current,// * Battery discharge current
-             &device_status,        //
-             &battery_voltage_offset_for_fans_on,
-             &eeprom_version,
-             &pv_charging_power,
-             &device_status2);
 
       char parallel_max_num; //QPIRI
       sscanf(reply2.c_str(),
@@ -213,12 +164,12 @@ int main(int argc, char* argv[]) {
       dlog("INVERTER: ampfactor from config is %.2f\n", settings.amperage_factor);
       dlog("INVERTER: wattfactor from config is %.2f\n", settings.watt_factor);
 
-      pv_input_current = pv_input_current * settings.amperage_factor;
+      const auto pv_input_current = qpigs.pv_input_current_for_battery * settings.amperage_factor;
 
       // It appears on further inspection of the documentation, that the input current is actually
       // current that is going out to the battery at battery voltage (NOT at PV voltage).  This
       // would explain the larger discrepancy we saw before.
-      pv_input_watts = (scc_voltage * pv_input_current) * settings.watt_factor;
+      const auto pv_input_watts = (qpigs.battery_voltage_from_scc * pv_input_current) * settings.watt_factor;
 
       // Calculate watt-hours generated per run interval period (given as program argument)
       // pv_input_watthour = pv_input_watts / (3600000 / runinterval);
@@ -228,36 +179,33 @@ int main(int argc, char* argv[]) {
       printf("{\n");
 
       printf("  \"Inverter_mode\":%d,\n", mode);
-      printf("  \"AC_grid_voltage\":%.1f,\n", voltage_grid);    // QPIGS
-      printf("  \"AC_grid_frequency\":%.1f,\n", freq_grid);     // QPIGS
-      printf("  \"AC_out_voltage\":%.1f,\n", voltage_out);      // QPIGS
-      printf("  \"AC_out_frequency\":%.1f,\n", freq_out);       // QPIGS
-      printf("  \"PV_in_voltage\":%.1f,\n", pv_input_voltage);  // QPIGS
-      printf("  \"PV_in_current\":%.1f,\n", pv_input_current);  // QPIGS
-      printf("  \"PV_in_watts\":%.1f,\n",
-             pv_input_watts);      // = (scc_voltage * pv_input_current) * wattfactor;
-      // printf("  \"PV_in_watthour\":%.4f,\n", pv_input_watthour);
-      printf("  \"SCC_voltage\":%.4f,\n", scc_voltage);         // QPIGS
-      printf("  \"Load_pct\":%d,\n", load_percent);             // QPIGS
-      printf("  \"Load_watt\":%d,\n", load_watt);               // QPIGS
-      // printf("  \"Load_watthour\":%.4f,\n", load_watthour);
-      printf("  \"Load_va\":%d,\n", load_va);                   // QPIGS
-      printf("  \"Bus_voltage\":%d,\n", voltage_bus);           // QPIGS
-      printf("  \"Heatsink_temperature\":%d,\n", temp_heatsink);// QPIGS
-      printf("  \"Battery_capacity\":%d,\n", batt_capacity);    // QPIGS
-      printf("  \"Battery_voltage\":%.2f,\n", voltage_batt);    // QPIGS
-      printf("  \"Battery_charge_current\":%d,\n", batt_charge_current); // QPIGS
-      printf("  \"Battery_discharge_current\":%d,\n", batt_discharge_current); // QPIGS
-      printf("  \"Load_status_on\":%c,\n", device_status[3]);   // QPIGS
-      printf("  \"SCC_charge_on\":%c,\n", device_status[6]);    // QPIGS
-      printf("  \"AC_charge_on\":%c,\n", device_status[7]);     // QPIGS
+      printf("  \"AC_grid_voltage\":%.1f,\n", qpigs.grid_voltage);
+      printf("  \"AC_grid_frequency\":%.1f,\n", qpigs.grid_frequency);
+      printf("  \"AC_out_voltage\":%.1f,\n", qpigs.ac_output_voltage);
+      printf("  \"AC_out_frequency\":%.1f,\n", qpigs.ac_output_frequency);
+      printf("  \"PV_in_voltage\":%.1f,\n", qpigs.pv_input_voltage);
+      printf("  \"PV_in_current\":%.1f,\n", qpigs.pv_input_current_for_battery);
+      printf("  \"PV_in_watts\":%.1f,\n", pv_input_watts);
+      printf("  \"SCC_voltage\":%.4f,\n", qpigs.battery_voltage_from_scc);
+      printf("  \"Load_pct\":%d,\n", qpigs.output_load_percent);
+      printf("  \"Load_watt\":%d,\n", qpigs.ac_output_active_power);
+      printf("  \"Load_va\":%d,\n", qpigs.ac_output_apparent_power);
+      printf("  \"Bus_voltage\":%d,\n", qpigs.bus_voltage);
+      printf("  \"Heatsink_temperature\":%d,\n", qpigs.inverter_heat_sink_temperature);
+      printf("  \"Battery_capacity\":%d,\n", qpigs.battery_capacity);
+      printf("  \"Battery_voltage\":%.2f,\n", qpigs.battery_voltage);
+      printf("  \"Battery_charge_current\":%d,\n", qpigs.battery_charging_current);
+      printf("  \"Battery_discharge_current\":%d,\n", qpigs.battery_discharge_current);
+      printf("  \"Load_status_on\":%c,\n", qpigs.device_status[3]);
+      printf("  \"SCC_charge_on\":%c,\n", qpigs.device_status[6]);
+      printf("  \"AC_charge_on\":%c,\n", qpigs.device_status[7]);
       printf("  \"Battery_voltage_offset_for_fans_on\":%d,\n",
-             battery_voltage_offset_for_fans_on); // QPIGS
-      printf("  \"Eeprom_version\":%d,\n", eeprom_version); // QPIGS
-      printf("  \"PV_charging_power\":%d,\n", pv_charging_power); // QPIGS
-      printf("  \"Charging_to_floating_mode\":%c,\n", device_status2[0]);   // QPIGS
-      printf("  \"Switch_On\":%c,\n", device_status2[1]);    // QPIGS
-      printf("  \"Dustproof_installed\":%c,\n", device_status2[2]);     // QPIGS
+             qpigs.battery_voltage_offset_for_fans_on);
+      printf("  \"Eeprom_version\":%d,\n", qpigs.eeprom_version);
+      printf("  \"PV_charging_power\":%d,\n", qpigs.pv_charging_power);
+      printf("  \"Charging_to_floating_mode\":%c,\n", qpigs.device_status_2[0]);
+      printf("  \"Switch_On\":%c,\n", qpigs.device_status_2[1]);
+      printf("  \"Dustproof_installed\":%c,\n", qpigs.device_status_2[2]);
       printf("  \"Battery_recharge_voltage\":%.1f,\n", batt_recharge_voltage); // QPIRI
       printf("  \"Battery_under_voltage\":%.1f,\n", batt_under_voltage); // QPIRI
       printf("  \"Battery_bulk_voltage\":%.1f,\n", batt_bulk_voltage);  // QPIRI
