@@ -54,6 +54,34 @@ const std::string& GetConfigurationFileName(const CommandLineArguments& cmd_args
 }
 
 int main(int argc, char* argv[]) {
+  CommandLineArguments arguments(argc, argv);
+  if (arguments.IsSet("-h", "--help")) {
+    PrintHelp();
+    return 0;
+  }
+  if (arguments.IsSet("-d")) {
+    SetDebugMode();
+  }
+
+  auto settings = LoadSettingsFromFile(GetConfigurationFileName(arguments));
+
+  bool ups_status_changed(false);
+  Inverter inverter(settings.device_name);
+  // Logic to send 'raw commands' to the inverter.
+  if (arguments.IsSet("-r")) {
+    inverter.ExecuteCmd(arguments.Get("-r"));
+    // We can piggyback on either GetStatus() function to return our result, it doesn't matter which
+    printf("Reply:  %s\n", inverter.GetQpiriStatus().c_str());
+    return 0;
+  }
+
+  const bool run_once = arguments.IsSet("-1", "--run-once");
+  if (run_once) {
+    inverter.Poll();
+  } else {
+    inverter.StartBackgroundPolling();
+  }
+
   // Reply1
   float voltage_grid;
   float freq_grid;
@@ -103,36 +131,6 @@ int main(int argc, char* argv[]) {
   int topology;
   int out_mode;
   float batt_redischarge_voltage;
-
-  // Get command flag settings from the arguments (if any)
-  CommandLineArguments arguments(argc, argv);
-  if (arguments.IsSet("-h", "--help")) {
-    PrintHelp();
-    return 0;
-  }
-  if (arguments.IsSet("-d")) {
-    SetDebugMode();
-  }
-
-  auto settings = LoadSettingsFromFile(GetConfigurationFileName(arguments));
-
-  bool ups_status_changed(false);
-  Inverter inverter(settings.device_name);
-  // Logic to send 'raw commands' to the inverter.
-  if (arguments.IsSet("-r")) {
-    inverter.ExecuteCmd(arguments.Get("-r"));
-    // We can piggyback on either GetStatus() function to return our result, it doesn't matter which
-    printf("Reply:  %s\n", inverter.GetQpiriStatus().c_str());
-    return 0;
-  }
-
-  const bool run_once = arguments.IsSet("-1", "--run-once");
-  if (run_once) {
-    inverter.Poll();
-  } else {
-    inverter.StartBackgroundPolling();
-  }
-
   while (true) {
     dlog("DEBUG:  Start loop");
     // If inverter mode changes print it to screen

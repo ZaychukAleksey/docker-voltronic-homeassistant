@@ -39,7 +39,7 @@ void dlog(const char* format, ...) {
 
   // Connect with args
   char fmt[2048];
-  snprintf(fmt, sizeof(fmt), "%s %s\n", buf, format);
+  snprintf(fmt, sizeof(fmt), "[%s] %s\n", buf, format);
 
   // Put on screen:
   va_start(ap, format);

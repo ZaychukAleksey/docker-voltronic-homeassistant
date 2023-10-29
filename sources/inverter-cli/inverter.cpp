@@ -9,6 +9,50 @@
 #include "logging.h"
 #include "main.h"
 
+namespace {
+
+uint16_t CalCrcHalf(uint8_t* pin, uint8_t len) {
+  uint16_t crc;
+
+  uint8_t da;
+  uint8_t* ptr;
+  uint8_t bCRCHign;
+  uint8_t bCRCLow;
+
+  uint16_t crc_ta[16] = {
+      0x0000, 0x1021, 0x2042, 0x3063, 0x4084, 0x50a5, 0x60c6, 0x70e7,
+      0x8108, 0x9129, 0xa14a, 0xb16b, 0xc18c, 0xd1ad, 0xe1ce, 0xf1ef
+  };
+  ptr = pin;
+  crc = 0;
+
+  while (len-- != 0) {
+    da = ((uint8_t)(crc >> 8)) >> 4;
+    crc <<= 4;
+    crc ^= crc_ta[da ^ (*ptr >> 4)];
+    da = ((uint8_t)(crc >> 8)) >> 4;
+    crc <<= 4;
+    crc ^= crc_ta[da ^ (*ptr & 0x0f)];
+    ptr++;
+  }
+  bCRCLow = crc;
+  bCRCHign = (uint8_t)(crc >> 8);
+  if (bCRCLow == 0x28 || bCRCLow == 0x0d || bCRCLow == 0x0a)
+    bCRCLow++;
+  if (bCRCHign == 0x28 || bCRCHign == 0x0d || bCRCHign == 0x0a)
+    bCRCHign++;
+  crc = ((uint16_t) bCRCHign) << 8;
+  crc += bCRCLow;
+  return (crc);
+}
+
+bool CheckCRC(unsigned char* data, int len) {
+  uint16_t crc = CalCrcHalf(data, len - 3);
+  return data[len - 3] == (crc >> 8) && data[len - 2] == (crc & 0xff);
+}
+
+}  // namespace
+
 
 Inverter::Inverter(const std::string& device)
     : device_(device) {
@@ -31,17 +75,17 @@ void Inverter::StopBackgroundPolling() {
   polling_thread_.join();
 }
 
-std::string Inverter::GetQpigsStatus() {
+std::string Inverter::GetQpigsStatus() const {
   std::lock_guard lock(mutex_);
   return {status1_};
 }
 
-std::string Inverter::GetQpiriStatus() {
+std::string Inverter::GetQpiriStatus() const {
   std::lock_guard lock(mutex_);
   return {status2_};
 }
 
-std::string Inverter::GetWarnings() {
+std::string Inverter::GetWarnings() const {
   std::lock_guard lock(mutex_);
   return {warnings_};
 }
@@ -54,7 +98,7 @@ void Inverter::SetMode(char newmode) {
   mode_ = newmode;
 }
 
-int Inverter::GetMode() {
+int Inverter::GetMode() const {
   std::lock_guard lock(mutex_);
   switch (mode_) {
     case 'P': return 1;  // Power_On
@@ -242,44 +286,4 @@ void Inverter::ExecuteCmd(std::string_view cmd) {
     std::lock_guard lock(mutex_);
     strcpy(status2_, (const char*) buf_ + 1);
   }
-}
-
-uint16_t Inverter::CalCrcHalf(uint8_t* pin, uint8_t len) {
-  uint16_t crc;
-
-  uint8_t da;
-  uint8_t* ptr;
-  uint8_t bCRCHign;
-  uint8_t bCRCLow;
-
-  uint16_t crc_ta[16] = {
-      0x0000, 0x1021, 0x2042, 0x3063, 0x4084, 0x50a5, 0x60c6, 0x70e7,
-      0x8108, 0x9129, 0xa14a, 0xb16b, 0xc18c, 0xd1ad, 0xe1ce, 0xf1ef
-  };
-  ptr = pin;
-  crc = 0;
-
-  while (len-- != 0) {
-    da = ((uint8_t)(crc >> 8)) >> 4;
-    crc <<= 4;
-    crc ^= crc_ta[da ^ (*ptr >> 4)];
-    da = ((uint8_t)(crc >> 8)) >> 4;
-    crc <<= 4;
-    crc ^= crc_ta[da ^ (*ptr & 0x0f)];
-    ptr++;
-  }
-  bCRCLow = crc;
-  bCRCHign = (uint8_t)(crc >> 8);
-  if (bCRCLow == 0x28 || bCRCLow == 0x0d || bCRCLow == 0x0a)
-    bCRCLow++;
-  if (bCRCHign == 0x28 || bCRCHign == 0x0d || bCRCHign == 0x0a)
-    bCRCHign++;
-  crc = ((uint16_t) bCRCHign) << 8;
-  crc += bCRCLow;
-  return (crc);
-}
-
-bool Inverter::CheckCRC(unsigned char* data, int len) {
-  uint16_t crc = CalCrcHalf(data, len - 3);
-  return data[len - 3] == (crc >> 8) && data[len - 2] == (crc & 0xff);
 }

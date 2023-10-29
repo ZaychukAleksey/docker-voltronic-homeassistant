@@ -16,18 +16,16 @@ class Inverter {
   void StartBackgroundPolling(std::size_t polling_interval_in_seconds = 5);
   void StopBackgroundPolling();
 
-  std::string GetQpiriStatus();
-  std::string GetQpigsStatus();
-  std::string GetWarnings();
+  std::string GetQpiriStatus() const;
+  std::string GetQpigsStatus() const;
+  std::string GetWarnings() const;
 
-  int GetMode();
+  int GetMode() const;
   void ExecuteCmd(std::string_view cmd);
 
  private:
   void SetMode(char newmode);
-  bool CheckCRC(unsigned char* buff, int len);
   bool Query(std::string_view cmd);
-  uint16_t CalCrcHalf(uint8_t* pin, uint8_t len);
 
   unsigned char buf_[1024]; //internal work buffer
   char warnings_[1024];
@@ -35,8 +33,8 @@ class Inverter {
   char status2_[1024];
   char mode_ = 0;
   const std::string device_;
-  std::mutex mutex_;
 
+  mutable std::mutex mutex_;
   std::thread polling_thread_;
   std::atomic_bool polling_thread_termination_requested_{false};
 };
