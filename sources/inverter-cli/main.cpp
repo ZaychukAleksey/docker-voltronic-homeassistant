@@ -71,7 +71,7 @@ int main(int argc, char* argv[]) {
   if (arguments.IsSet("-r")) {
     inverter.ExecuteCmd(arguments.Get("-r"));
     // We can piggyback on either GetStatus() function to return our result, it doesn't matter which
-    printf("Reply:  %s\n", inverter.GetQpiriStatus().c_str());
+    printf("Reply:  %s\n", inverter.GetQpiriStatusRaw().c_str());
     return 0;
   }
 
@@ -82,29 +82,6 @@ int main(int argc, char* argv[]) {
     inverter.StartBackgroundPolling();
   }
 
-  // Reply2
-  float grid_voltage_rating;
-  float grid_current_rating;
-  float out_voltage_rating;
-  float out_freq_rating;
-  float out_current_rating;
-  int out_va_rating;
-  int out_watt_rating;
-  float batt_rating;
-  float batt_recharge_voltage;
-  float batt_under_voltage;
-  float batt_bulk_voltage;
-  float batt_float_voltage;
-  int batt_type;
-  int max_grid_charge_current;
-  int max_charge_current;
-  int in_voltage_range;
-  int out_source_priority;
-  int charger_source_priority;
-  int machine_type;
-  int topology;
-  int out_mode;
-  float batt_redischarge_voltage;
   while (true) {
     dlog("DEBUG:  Start loop");
     // If inverter mode changes print it to screen
@@ -125,38 +102,8 @@ int main(int argc, char* argv[]) {
 
       int mode = inverter.GetMode();
       const auto qpigs = inverter.GetQpigsStatus();
-      const auto reply2 = inverter.GetQpiriStatus();
+      const auto qpiri = inverter.GetQpiriStatus();
       const auto warnings = inverter.GetWarnings();
-
-
-      char parallel_max_num; //QPIRI
-      sscanf(reply2.c_str(),
-             "%f %f %f %f %f %d %d %f %f %f %f %f %d %d %d %d %d %d %c %d %d %d %f",
-             &grid_voltage_rating,      // ^ Grid rating voltage
-             &grid_current_rating,      // ^ Grid rating current per protocol, frequency in practice
-             &out_voltage_rating,       // ^ AC output rating voltage
-             &out_freq_rating,          // ^ AC output rating frequency
-             &out_current_rating,       // ^ AC output rating current
-             &out_va_rating,            // ^ AC output rating apparent power
-             &out_watt_rating,          // ^ AC output rating active power
-             &batt_rating,              // ^ Battery rating voltage
-             &batt_recharge_voltage,    // * Battery re-charge voltage
-             &batt_under_voltage,       // * Battery under voltage
-             &batt_bulk_voltage,        // * Battery bulk voltage
-             &batt_float_voltage,       // * Battery float voltage
-             &batt_type,                // ^ Battery type - 0 AGM, 1 Flooded, 2 User
-             &max_grid_charge_current,  // * Current max AC charging current
-             &max_charge_current,       // * Current max charging current
-             &in_voltage_range,         // ^ Input voltage range, 0 Appliance 1 UPS
-             &out_source_priority,      // * Output source priority, 0 Utility first, 1 solar first, 2 SUB first
-             &charger_source_priority,  // * Charger source priority 0 Utility first, 1 solar first, 2 Solar + utility, 3 only solar charging permitted
-             &parallel_max_num,         // ^ Parallel max number 0-9
-             &machine_type,             // ^ Machine type 00 Grid tie, 01 Off grid, 10 hybrid
-             &topology,                 // ^ Topology  0 transformerless 1 transformer
-             &out_mode,                 // ^ Output mode 00: single machine output, 01: parallel output, 02: Phase 1 of 3 Phase output, 03: Phase 2 of 3 Phase output, 04: Phase 3 of 3 Phase output
-             &batt_redischarge_voltage);// * Battery re-discharge voltage
-      // ^ PV OK condition for parallel
-      // ^ PV power balance
 
       // There appears to be a discrepancy in actual DMM measured current vs what the meter is
       // telling me it's getting, so lets add a variable we can multiply/divide by to adjust if
@@ -206,16 +153,16 @@ int main(int argc, char* argv[]) {
       printf("  \"Charging_to_floating_mode\":%c,\n", qpigs.device_status_2[0]);
       printf("  \"Switch_On\":%c,\n", qpigs.device_status_2[1]);
       printf("  \"Dustproof_installed\":%c,\n", qpigs.device_status_2[2]);
-      printf("  \"Battery_recharge_voltage\":%.1f,\n", batt_recharge_voltage); // QPIRI
-      printf("  \"Battery_under_voltage\":%.1f,\n", batt_under_voltage); // QPIRI
-      printf("  \"Battery_bulk_voltage\":%.1f,\n", batt_bulk_voltage);  // QPIRI
-      printf("  \"Battery_float_voltage\":%.1f,\n", batt_float_voltage); // QPIRI
-      printf("  \"Max_grid_charge_current\":%d,\n", max_grid_charge_current); // QPIRI
-      printf("  \"Max_charge_current\":%d,\n", max_charge_current);  // QPIRI
-      printf("  \"Out_source_priority\":%d,\n", out_source_priority); // QPIRI
-      printf("  \"Charger_source_priority\":%d,\n", charger_source_priority); // QPIRI
-      printf("  \"Battery_redischarge_voltage\":%.1f,\n", batt_redischarge_voltage);  // QPIRI
-      printf("  \"Warnings\":\"%s\"\n", warnings.c_str());     //
+      printf("  \"Battery_recharge_voltage\":%.1f,\n", qpiri.battery_recharge_voltage);
+      printf("  \"Battery_under_voltage\":%.1f,\n", qpiri.battery_under_voltage);
+      printf("  \"Battery_bulk_voltage\":%.1f,\n", qpiri.battery_bulk_voltage);
+      printf("  \"Battery_float_voltage\":%.1f,\n", qpiri.battery_float_voltage);
+      printf("  \"Max_grid_charge_current\":%d,\n", qpiri.current_max_ac_charging_current);
+      printf("  \"Max_charge_current\":%d,\n", qpiri.current_max_charging_current);
+      printf("  \"Out_source_priority\":%d,\n", qpiri.output_source_priority);
+      printf("  \"Charger_source_priority\":%d,\n", qpiri.charger_source_priority);
+      printf("  \"Battery_redischarge_voltage\":%.1f,\n", qpiri.battery_redischarge_voltage);
+      printf("  \"Warnings\":\"%s\"\n", warnings.c_str());
       printf("}\n");
 
       if (run_once) {

@@ -79,7 +79,7 @@ QpigsData Inverter::GetQpigsStatus() const {
   std::lock_guard lock(mutex_);
 
   QpigsData result;
-  // Parse and display values, QPIGS, * means contained in output, ^ is not included in output
+  // TODO: check sscanf returned value;
   sscanf(status1_, "%f %f %f %f %d %d %d %d %f %d %d %d %f %f %f %d %s %d %d %d %s",
          &result.grid_voltage,
          &result.grid_frequency,
@@ -105,7 +105,44 @@ QpigsData Inverter::GetQpigsStatus() const {
   return result;
 }
 
-std::string Inverter::GetQpiriStatus() const {
+QpiriData Inverter::GetQpiriStatus() const {
+  std::lock_guard lock(mutex_);
+  QpiriData result;
+
+  // TODO: check sscanf returned value;
+  sscanf(status2_,
+         "%f %f %f %f %f %d %d %f %f %f %f %f %d %d %d %d %d %d %d %d %d %d %f %d %d %d",
+         &result.grid_rating_voltage,
+         &result.grid_rating_current,
+         &result.ac_output_rating_voltage,
+         &result.ac_output_rating_frequency,
+         &result.ac_output_rating_current,
+         &result.ac_output_rating_apparent_power,
+         &result.ac_output_rating_active_power,
+         &result.battery_rating_voltage,
+         &result.battery_recharge_voltage,
+         &result.battery_under_voltage,
+         &result.battery_bulk_voltage,
+         &result.battery_float_voltage,
+         &result.battery_type,
+         &result.current_max_ac_charging_current,
+         &result.current_max_charging_current,
+         &result.input_voltage_range,
+         &result.output_source_priority,
+         &result.charger_source_priority,
+         &result.parallel_max_num,
+         &result.machine_type,
+         &result.topology,
+         &result.out_mode,
+         &result.battery_redischarge_voltage,
+         &result.pv_ok_condition_for_parallel,
+         &result.pv_power_balance,
+         &result.max_charging_time_at_cv_stage);
+
+  return result;
+}
+
+std::string Inverter::GetQpiriStatusRaw() const {
   std::lock_guard lock(mutex_);
   return {status2_};
 }

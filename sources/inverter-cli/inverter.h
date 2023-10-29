@@ -18,10 +18,11 @@ class Inverter {
   void StartBackgroundPolling(std::size_t polling_interval_in_seconds = 5);
   void StopBackgroundPolling();
 
-  /// Device Rated Information inquiry.
-  std::string GetQpiriStatus() const;
   /// Device general status parameters inquiry.
   QpigsData GetQpigsStatus() const;
+  /// Device Rated Information inquiry.
+  QpiriData GetQpiriStatus() const;
+  std::string GetQpiriStatusRaw() const;
   std::string GetWarnings() const;
 
   int GetMode() const;
