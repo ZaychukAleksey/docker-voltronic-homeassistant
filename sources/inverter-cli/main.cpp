@@ -7,13 +7,10 @@
 #include <atomic>
 #include <cstdio>
 #include <cstdlib>
-#include <cstring>
+#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <string>
-#include <sys/file.h>
-#include <thread>
-#include <unistd.h>
 #include <vector>
 
 #include "inputparser.h"
@@ -32,66 +29,59 @@ std::atomic_bool ups_qpigs_changed(false);
 std::atomic_bool ups_qpiws_changed(false);
 std::atomic_bool ups_cmd_executed(false);
 
+struct Settings {
+  /// The device in OS, e.g. "/dev/hidraw0".
+  std::string device_name;
 
-// ---------------------------------------
-// Global configs read from 'inverter.conf'
+  /// This allows you to modify the amperage in case the inverter is giving an incorrect
+  /// reading compared to measurement tools.  Normally this will remain '1'
+  float amperage_factor = 1.0f;
 
-std::string devicename;
-// int runinterval;
-float ampfactor;
-float wattfactor;
+  /// This allows you to modify the wattage in case the inverter is giving an incorrect
+  /// reading compared to measurement tools.  Normally this will remain '1'
+  float watt_factor = 1.0f;
+};
 
-// ---------------------------------------
-
-void attemptAddSetting(int* addTo, std::string addFrom) {
+float ToFloat(const std::string& option_name, const std::string& option_value) {
   try {
-    *addTo = stof(addFrom);
-  } catch (std::exception e) {
-    std::cout << e.what() << '\n';
-    std::cout << "There's probably a string in the settings file where an int should be.\n";
-  }
-}
-
-void attemptAddSetting(float* addTo, std::string addFrom) {
-  try {
-    *addTo = stof(addFrom);
-  } catch (std::exception e) {
-    std::cout << e.what() << '\n';
-    std::cout
-        << "There's probably a string in the settings file where a floating point should be.\n";
-  }
-}
-
-void getSettingsFile(std::string filename) {
-  try {
-    std::string fileline, linepart1, linepart2;
-    std::ifstream infile;
-    infile.open(filename);
-    while (!infile.eof()) {
-      getline(infile, fileline);
-      size_t firstpos = fileline.find("#");
-      if (firstpos != 0 &&
-          fileline.length() != 0) {    // Ignore lines starting with # (comment lines)
-        size_t delimiter = fileline.find("=");
-        linepart1 = fileline.substr(0, delimiter);
-        linepart2 = fileline.substr(delimiter + 1, std::string::npos - delimiter);
-
-        if (linepart1 == "device")
-          devicename = linepart2;
-          // else if(linepart1 == "run_interval")
-          //     attemptAddSetting(&runinterval, linepart2);
-        else if (linepart1 == "amperage_factor")
-          attemptAddSetting(&ampfactor, linepart2);
-        else if (linepart1 == "watt_factor")
-          attemptAddSetting(&wattfactor, linepart2);
-        else
-          continue;
-      }
-    }
-    infile.close();
+    return stof(option_value);
   } catch (...) {
-    std::cout << "Settings could not be read properly...\n";
+    throw std::runtime_error("ERROR: incorrect value '" + option_value + "' for option '"
+                             + option_name + "'. Floating point value is expected.");
   }
+}
+
+[[nodiscard]] Settings LoadSettingsFromFile(const std::string& filename) {
+  std::ifstream file(filename);
+  if (!file) {
+    throw std::runtime_error("ERROR: failed to open configuration file " + filename);
+  }
+
+  Settings result;
+  std::string line;
+  while (getline(file, line)) {
+    // Skip empty or commented lines (lines starting with '#').
+    const auto comment_position = line.find('#');
+    if (comment_position != std::string::npos || line.empty()) continue;
+
+    const auto delimiter = line.find('=');
+    if (delimiter == std::string::npos || delimiter == 0 || (delimiter == line.length() - 1)) {
+      throw std::runtime_error("ERROR: incorrect line in configuration file: \"" + line + '"');
+    }
+
+    auto parameter_name = line.substr(0, delimiter);
+    auto parameter_value = line.substr(delimiter + 1, std::string::npos - delimiter);
+    if (parameter_name == "device") {
+      result.device_name = parameter_value;
+    } else if (parameter_name == "amperage_factor") {
+      result.amperage_factor = ToFloat(parameter_name, parameter_value);
+    } else if (parameter_name == "watt_factor") {
+      result.watt_factor = ToFloat(parameter_name, parameter_value);
+    } else {
+      throw std::runtime_error("ERROR: unknown configuration parameter: " + parameter_name);
+    }
+  }
+  return result;
 }
 
 
@@ -99,10 +89,11 @@ void PrintHelp() {
   std::cout
       << "\nUSAGE:  ./inverter_poller <args> [-r <command>], [-h | --help], [-1 | --run-once]\n\n"
          "SUPPORTED ARGUMENTS:\n"
-         "          -r <raw-command>      TX 'raw' command to the inverter\n"
-         "          -h | --help           This Help Message\n"
-         "          -1 | --run-once       Runs one iteration on the inverter, and then exits\n"
-         "          -d                    Additional debugging\n\n"
+         "    -r <raw-command>      TX 'raw' command to the inverter\n"
+         "    -h | --help           This Help Message\n"
+         "    -1 | --run-once       Runs one iteration on the inverter, and then exits\n"
+         "    -c                    Optional path to the configuration file (default: ./inverter.conf)"
+         "    -d                    Additional debugging\n\n"
          "RAW COMMAND EXAMPLES (see protocol manual for complete list):\n"
          "Set output source priority  POP00     (Utility first)\n"
          "                            POP01     (Solar first)\n"
@@ -116,6 +107,13 @@ void PrintHelp() {
          "                            PEj / PDj (Enable/disable power saving)\n"
          "                            PEu / PDu (Enable/disable overload restart)\n"
          "                            PEx / PDx (Enable/disable backlight)\n\n";
+}
+
+const std::string& GetConfigurationFileName(const InputParser& cmd_args) {
+  static std::string kConfigurationFile = "./inverter.conf";
+  return cmd_args.CmdOptionExists("-c")
+         ? cmd_args.GetCmdOption("-c")
+         : kConfigurationFile;
 }
 
 int main(int argc, char* argv[]) {
@@ -183,21 +181,12 @@ int main(int argc, char* argv[]) {
     runOnce = true;
   }
   log("INVERTER: Debug set");
-  const char* settings;
 
-  // Get the rest of the settings from the conf file
-  if (access("./inverter.conf", F_OK) != -1) { // file exists
-    settings = "./inverter.conf";
-  } else { // file doesn't exist
-    settings = "/etc/inverter/inverter.conf";
-  }
-  getSettingsFile(settings);
-  int fd = open(settings, O_RDWR);
-  while (flock(fd, LOCK_EX)) sleep(1);
+  auto settings = LoadSettingsFromFile(GetConfigurationFileName(cmdArgs));
 
   bool ups_status_changed(false);
-  ups = new Inverter(devicename);
-  // Logic to send 'raw commands' to the inverter..
+  ups = new Inverter(settings.device_name);
+  // Logic to send 'raw commands' to the inverter.
   if (!rawcmd.empty()) {
     ups->ExecuteCmd(rawcmd);
     // We can piggyback on either GetStatus() function to return our result, it doesn't matter which
@@ -291,16 +280,16 @@ int main(int argc, char* argv[]) {
       // telling me it's getting, so lets add a variable we can multiply/divide by to adjust if
       // needed.  This should be set in the config so it can be changed without program recompile.
       if (debugFlag) {
-        printf("INVERTER: ampfactor from config is %.2f\n", ampfactor);
-        printf("INVERTER: wattfactor from config is %.2f\n", wattfactor);
+        printf("INVERTER: ampfactor from config is %.2f\n", settings.amperage_factor);
+        printf("INVERTER: wattfactor from config is %.2f\n", settings.watt_factor);
       }
 
-      pv_input_current = pv_input_current * ampfactor;
+      pv_input_current = pv_input_current * settings.amperage_factor;
 
       // It appears on further inspection of the documentation, that the input current is actually
       // current that is going out to the battery at battery voltage (NOT at PV voltage).  This
       // would explain the larger discrepancy we saw before.
-      pv_input_watts = (scc_voltage * pv_input_current) * wattfactor;
+      pv_input_watts = (scc_voltage * pv_input_current) * settings.watt_factor;
 
       // Calculate watt-hours generated per run interval period (given as program argument)
       // pv_input_watthour = pv_input_watts / (3600000 / runinterval);
