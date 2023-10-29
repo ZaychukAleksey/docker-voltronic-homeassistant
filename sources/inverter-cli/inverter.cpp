@@ -17,22 +17,19 @@ Inverter::Inverter(const std::string& device)
   warnings_[0] = 0;
 }
 
-std::string* Inverter::GetQpigsStatus() {
+std::string Inverter::GetQpigsStatus() {
   std::lock_guard lock(mutex_);
-  std::string* result = new std::string(status1_);
-  return result;
+  return {status1_};
 }
 
-std::string* Inverter::GetQpiriStatus() {
+std::string Inverter::GetQpiriStatus() {
   std::lock_guard lock(mutex_);
-  std::string* result = new std::string(status2_);
-  return result;
+  return {status2_};
 }
 
-std::string* Inverter::GetWarnings() {
+std::string Inverter::GetWarnings() {
   std::lock_guard lock(mutex_);
-  std::string* result = new std::string(warnings_);
-  return result;
+  return {warnings_};
 }
 
 void Inverter::SetMode(char newmode) {

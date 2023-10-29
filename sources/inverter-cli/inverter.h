@@ -20,9 +20,9 @@ class Inverter {
     t1_.join();
   }
 
-  std::string* GetQpiriStatus();
-  std::string* GetQpigsStatus();
-  std::string* GetWarnings();
+  std::string GetQpiriStatus();
+  std::string GetQpigsStatus();
+  std::string GetWarnings();
 
   int GetMode();
   void ExecuteCmd(std::string_view cmd);
