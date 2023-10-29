@@ -7,7 +7,6 @@
 
 #include "inverter.h"
 #include "logging.h"
-#include "main.h"
 
 namespace {
 
@@ -61,23 +60,7 @@ Inverter::Inverter(const std::string& device)
   warnings_[0] = 0;
 }
 
-void Inverter::StartBackgroundPolling(std::size_t polling_interval_in_seconds) {
-  polling_thread_ = std::thread([this, polling_interval = polling_interval_in_seconds]() {
-    while (!polling_thread_termination_requested_) {
-      Poll();
-      sleep(polling_interval);
-    }
-  });
-}
-
-void Inverter::StopBackgroundPolling() {
-  polling_thread_termination_requested_ = true;
-  polling_thread_.join();
-}
-
 QpigsData Inverter::GetQpigsStatus() const {
-  std::lock_guard lock(mutex_);
-
   QpigsData result;
   // TODO: check sscanf returned value;
   sscanf(status1_, "%f %f %f %f %d %d %d %d %f %d %d %d %f %f %f %d %s %d %d %d %s",
@@ -106,7 +89,6 @@ QpigsData Inverter::GetQpigsStatus() const {
 }
 
 QpiriData Inverter::GetQpiriStatus() const {
-  std::lock_guard lock(mutex_);
   QpiriData result;
 
   // TODO: check sscanf returned value;
@@ -143,27 +125,20 @@ QpiriData Inverter::GetQpiriStatus() const {
 }
 
 std::string Inverter::GetQpiriStatusRaw() const {
-  std::lock_guard lock(mutex_);
   return {status2_};
 }
 
 std::string Inverter::GetWarnings() const {
-  std::lock_guard lock(mutex_);
   return {warnings_};
 }
 
 void Inverter::SetMode(char newmode) {
-  std::lock_guard lock(mutex_);
-  if (mode_ && newmode != mode_) {
-    ups_status_changed = true;
-  }
   mode_ = newmode;
 }
 
 int Inverter::GetMode() const {
-  std::lock_guard lock(mutex_);
   switch (mode_) {
-    case 'P': return 1;  // Power_On
+    case 'P': return 1;  // Power On
     case 'S': return 2;  // Standby
     case 'L': return 3;  // Line
     case 'B': return 4;  // Battery
@@ -305,47 +280,33 @@ bool Inverter::Query(std::string_view cmd) {
   return true;
 }
 
-void Inverter::Poll() {
+// TODO: fix "NAK" behavior
+bool Inverter::Poll() {
   // Reading mode_
-  if (!ups_qmod_changed) {
-    if (Query("QMOD") && strcmp((char*) &buf_[1], "NAK") != 0) {
-      SetMode(buf_[1]);
-      ups_qmod_changed = true;
-    }
+  if (Query("QMOD") && strcmp((char*) &buf_[1], "NAK") != 0) {
+    SetMode(buf_[1]);
   }
 
   // Reading QPIGS status
-  if (!ups_qpigs_changed) {
-    if (Query("QPIGS") && strcmp((char*) &buf_[1], "NAK") != 0) {
-      std::lock_guard lock(mutex_);
-      strcpy(status1_, (const char*) buf_ + 1);
-      ups_qpigs_changed = true;
-    }
+  if (Query("QPIGS") && strcmp((char*) &buf_[1], "NAK") != 0) {
+    strcpy(status1_, (const char*) buf_ + 1);
   }
 
   // Reading QPIRI status
-  if (!ups_qpiri_changed) {
-    if (Query("QPIRI") && strcmp((char*) &buf_[1], "NAK") != 0) {
-      std::lock_guard lock(mutex_);
-      strcpy(status2_, (const char*) buf_ + 1);
-      ups_qpiri_changed = true;
-    }
+  if (Query("QPIRI") && strcmp((char*) &buf_[1], "NAK") != 0) {
+    strcpy(status2_, (const char*) buf_ + 1);
   }
 
   // Get any device warnings_...
-  if (!ups_qpiws_changed) {
-    if (Query("QPIWS") && strcmp((char*) &buf_[1], "NAK") != 0) {
-      std::lock_guard lock(mutex_);
-      strcpy(warnings_, (const char*) buf_ + 1);
-      ups_qpiws_changed = true;
-    }
+  if (Query("QPIWS") && strcmp((char*) &buf_[1], "NAK") != 0) {
+    strcpy(warnings_, (const char*) buf_ + 1);
   }
+  return true;
 }
 
 void Inverter::ExecuteCmd(std::string_view cmd) {
   // Sending any command raw
   if (Query(cmd.data())) {
-    std::lock_guard lock(mutex_);
     strcpy(status2_, (const char*) buf_ + 1);
   }
 }

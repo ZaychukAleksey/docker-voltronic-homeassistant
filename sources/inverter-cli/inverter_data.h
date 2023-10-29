@@ -117,3 +117,16 @@ struct QpiriData {
   int max_charging_time_at_cv_stage;
   /// @}
 };
+
+enum class DeviceMove : char {
+  kPowerOn,         ///< Power on mode
+  kStandby,         ///< Standby mode
+  kBypass,          ///< Bypass mode
+  kLine,            ///< Line Mode
+  kBattery,         ///< Battery mode
+  kBatteryTest,     ///< Battery test mode
+  kFault,           ///< Fault mode
+  kShutdown,        ///< Shutdown Mode
+  kGrid,            ///< Grid mode
+  kCharge,          ///< Charge mode
+};

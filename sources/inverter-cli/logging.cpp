@@ -6,8 +6,6 @@
 #include <ctime>
 #include <mutex>
 
-#include "main.h"
-
 namespace {
 
 const char* kLogFile = "/dev/null";

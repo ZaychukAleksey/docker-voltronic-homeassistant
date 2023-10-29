@@ -12,11 +12,8 @@ class Inverter {
   /// @param device is the device in OS, e.g. "/dev/hidraw0".
   explicit Inverter(const std::string& device);
 
-  /// Fetch data from the inverter once.
-  void Poll();
-  /// Start a background thread that periodically polls the inverter.
-  void StartBackgroundPolling(std::size_t polling_interval_in_seconds = 5);
-  void StopBackgroundPolling();
+  /// Fetch data from the inverter.
+  bool Poll();
 
   /// Device general status parameters inquiry.
   QpigsData GetQpigsStatus() const;
@@ -38,8 +35,4 @@ class Inverter {
   char status2_[1024];
   char mode_ = 0;
   const std::string device_;
-
-  mutable std::mutex mutex_;
-  std::thread polling_thread_;
-  std::atomic_bool polling_thread_termination_requested_{false};
 };

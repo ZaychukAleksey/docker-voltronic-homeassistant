@@ -4,24 +4,13 @@
 // Please feel free to adapt this code and add more parameters -- See the following forum for a breakdown on the RS323 protocol: http://forums.aeva.asn.au/viewtopic.php?t=4332
 // ------------------------------------------------------------------------
 
-#include <atomic>
 #include <cstdio>
-#include <filesystem>
-
 #include <iostream>
 #include <string>
 
 #include "configuration.h"
 #include "inverter.h"
 #include "logging.h"
-#include "main.h"
-
-std::atomic_bool ups_status_changed(false);
-std::atomic_bool ups_qmod_changed(false);
-std::atomic_bool ups_qpiri_changed(false);
-std::atomic_bool ups_qpigs_changed(false);
-std::atomic_bool ups_qpiws_changed(false);
-std::atomic_bool ups_cmd_executed(false);
 
 
 void PrintHelp() {
@@ -54,6 +43,10 @@ const std::string& GetConfigurationFileName(const CommandLineArguments& cmd_args
 }
 
 void PrintResultInJson(const Inverter& inverter, const Settings& settings) {
+  // Calculate watt-hours generated per run interval period (given as program argument)
+  // pv_input_watthour = pv_input_watts / (3600000 / runinterval);
+  // load_watthour = (float)load_watt / (3600000 / runinterval);
+
   int mode = inverter.GetMode();
   const auto qpigs = inverter.GetQpigsStatus();
   const auto qpiri = inverter.GetQpiriStatus();
@@ -123,9 +116,8 @@ int main(int argc, char* argv[]) {
   }
 
   auto settings = LoadSettingsFromFile(GetConfigurationFileName(arguments));
-
-  bool ups_status_changed(false);
   Inverter inverter(settings.device_name);
+
   // Logic to send 'raw commands' to the inverter.
   if (arguments.IsSet("-r")) {
     inverter.ExecuteCmd(arguments.Get("-r"));
@@ -135,47 +127,20 @@ int main(int argc, char* argv[]) {
   }
 
   const bool run_once = arguments.IsSet("-1", "--run-once");
-  if (run_once) {
-    inverter.Poll();
-  } else {
-    inverter.StartBackgroundPolling();
-  }
-
   while (true) {
-    dlog("DEBUG:  Start loop");
-    // If inverter mode changes print it to screen
-
-    if (ups_status_changed) {
-      int mode = inverter.GetMode();
-      if (mode)
-        dlog("INVERTER: Mode Currently set to: %d", mode);
-
-      ups_status_changed = false;
-    }
-
-    // Once we receive all queries print it to screen
-    if (ups_qmod_changed && ups_qpiri_changed && ups_qpigs_changed) {
-      ups_qmod_changed = false;
-      ups_qpiri_changed = false;
-      ups_qpigs_changed = false;
-
-      // Calculate watt-hours generated per run interval period (given as program argument)
-      // pv_input_watthour = pv_input_watts / (3600000 / runinterval);
-      // load_watthour = (float)load_watt / (3600000 / runinterval);
-
-      // Print as JSON (output is expected to be parsed by another tool...)
+    if (inverter.Poll()) {
+      // The output is expected to be parsed by another tool.
       PrintResultInJson(inverter, settings);
-
-      if (run_once) {
-        dlog("INVERTER: All queries complete, exiting loop.");
-        return 0;
-      }
+    } else {
+      dlog("ERROF: Failed to retrieve all data from inverter.");
     }
 
-    sleep(1);
+    if (run_once) {
+      break;
+    }
+
+    sleep(5);
   }
 
-  // FIXME this isn't reachable.
-  inverter.StopBackgroundPolling();
   return 0;
 }
