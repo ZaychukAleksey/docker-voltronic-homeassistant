@@ -4,4 +4,4 @@
 void SetDebugMode();
 
 /// Only print if debug flag is set (see SetDebugMode()), else do nothing.
-void log(const char* format, ...);
+void dlog(const char* format, ...);

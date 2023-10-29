@@ -19,7 +19,6 @@
 #include "main.h"
 
 
-bool debugFlag = false;
 bool runOnce = false;
 Inverter* ups = nullptr;
 std::atomic_bool ups_status_changed(false);
@@ -117,12 +116,11 @@ int main(int argc, char* argv[]) {
     return 0;
   }
   if (arguments.IsSet("-d")) {
-    debugFlag = true;
+    SetDebugMode();
   }
   if (arguments.IsSet("-1") || arguments.IsSet("--run-once")) {
     runOnce = true;
   }
-  log("INVERTER: Debug set");
 
   auto settings = LoadSettingsFromFile(GetConfigurationFileName(arguments));
 
@@ -143,13 +141,13 @@ int main(int argc, char* argv[]) {
   }
 
   while (true) {
-    log("DEBUG:  Start loop");
+    dlog("DEBUG:  Start loop");
     // If inverter mode changes print it to screen
 
     if (ups_status_changed) {
       int mode = ups->GetMode();
       if (mode)
-        log("INVERTER: Mode Currently set to: %d", mode);
+        dlog("INVERTER: Mode Currently set to: %d", mode);
 
       ups_status_changed = false;
     }
@@ -221,10 +219,8 @@ int main(int argc, char* argv[]) {
       // There appears to be a discrepancy in actual DMM measured current vs what the meter is
       // telling me it's getting, so lets add a variable we can multiply/divide by to adjust if
       // needed.  This should be set in the config so it can be changed without program recompile.
-      if (debugFlag) {
-        printf("INVERTER: ampfactor from config is %.2f\n", settings.amperage_factor);
-        printf("INVERTER: wattfactor from config is %.2f\n", settings.watt_factor);
-      }
+      dlog("INVERTER: ampfactor from config is %.2f\n", settings.amperage_factor);
+      dlog("INVERTER: wattfactor from config is %.2f\n", settings.watt_factor);
 
       pv_input_current = pv_input_current * settings.amperage_factor;
 
@@ -286,7 +282,7 @@ int main(int argc, char* argv[]) {
       if (runOnce) {
         // there is no thread -- ups->terminateThread();
         // Do once and exit instead of loop endlessly
-        log("INVERTER: All queries complete, exiting loop.");
+        dlog("INVERTER: All queries complete, exiting loop.");
         exit(0);
       }
     }

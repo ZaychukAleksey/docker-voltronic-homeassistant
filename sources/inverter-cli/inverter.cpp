@@ -60,7 +60,7 @@ bool Inverter::Query(std::string_view cmd) {
 
   auto fd = open(device_.data(), O_RDWR | O_NONBLOCK);
   if (fd == -1) {
-    log("DEBUG:  Unable to open device file (errno=%d %s)", errno, strerror(errno));
+    dlog("DEBUG:  Unable to open device file (errno=%d %s)", errno, strerror(errno));
     sleep(10);
     return false;
   }
@@ -89,7 +89,7 @@ bool Inverter::Query(std::string_view cmd) {
   uint16_t crc = CalCrcHalf((uint8_t*) cmd.data(), cmd.length());
   auto n = cmd.length();
   memcpy(&buf_, cmd.data(), n);
-  log("DEBUG:  Current CRC: %X %X", crc >> 8, crc & 0xff);
+  dlog("DEBUG:  Current CRC: %X %X", crc >> 8, crc & 0xff);
   buf_[n++] = crc >> 8;
   buf_[n++] = crc & 0xff;
   buf_[n++] = 0x0d;
@@ -104,7 +104,7 @@ bool Inverter::Query(std::string_view cmd) {
     int size = sprintf(messageptr, "%02x ", buf_[j]);
     messageptr += 3;
   }
-  log("%s)", messagestart);
+  dlog("%s)", messagestart);
 
   /* The below command doesn't take more than an 8-byte payload 5 chars (+ 3
      bytes of <CRC><CRC><CR>).  It has to do with low speed USB specifications.
@@ -126,10 +126,10 @@ bool Inverter::Query(std::string_view cmd) {
       remaining = 0;
 
     if (written < 0)
-      log("DEBUG:  Write command failed, error number %d was returned", errno);
+      dlog("DEBUG:  Write command failed, error number %d was returned", errno);
     else
-      log("DEBUG:  %d bytes written, %d bytes sent, %d bytes remaining", written, bytes_sent,
-          remaining);
+      dlog("DEBUG:  %d bytes written, %d bytes sent, %d bytes remaining", written, bytes_sent,
+           remaining);
 
     chunk_size = remaining;
     usleep(50000);   // Sleep 50ms before sending another 8 bytes of info
@@ -147,7 +147,7 @@ bool Inverter::Query(std::string_view cmd) {
     if (n < 0) {
       // Wait 5 secs before timeout
       if (time(NULL) - started > 5) {
-        log("DEBUG:  %s read timeout", cmd);
+        dlog("DEBUG:  %s read timeout", cmd);
         break;
       } else {
         usleep(50000);  // sleep 50ms
@@ -156,7 +156,7 @@ bool Inverter::Query(std::string_view cmd) {
     }
     i += n;
     buf_[i] = '\0';  // terminate what we have so far with a null string
-    log("DEBUG:  %d bytes read, %d total bytes:  %02x %02x %02x %02x %02x %02x %02x %02x",
+    dlog("DEBUG:  %d bytes read, %d total bytes:  %02x %02x %02x %02x %02x %02x %02x %02x",
         n, i, buf_[i - 8], buf_[i - 7], buf_[i - 6], buf_[i - 5], buf_[i - 4], buf_[i - 3],
         buf_[i - 2], buf_[i - 1]);
 
@@ -168,20 +168,20 @@ bool Inverter::Query(std::string_view cmd) {
   close(fd);
 
   int replysize = endbuf - startbuf + 1;
-  log("DEBUG:  Found reply <cr> at byte: %d", replysize);
+  dlog("DEBUG:  Found reply <cr> at byte: %d", replysize);
 
   if (buf_[0] != '(' || buf_[replysize - 1] != 0x0d) {
-    log("DEBUG:  %s: incorrect buffer start/stop bytes.  Buffer: %s", cmd, buf_);
+    dlog("DEBUG:  %s: incorrect buffer start/stop bytes.  Buffer: %s", cmd, buf_);
     return false;
   }
   if (!(CheckCRC(buf_, replysize))) {
-    log("DEBUG:  %s: CRC Failed!  Reply size: %d  Buffer: %s", cmd, replysize, buf_);
+    dlog("DEBUG:  %s: CRC Failed!  Reply size: %d  Buffer: %s", cmd, replysize, buf_);
     return false;
   }
   buf_[replysize - 3] = '\0';      // Null-terminating on first CRC byte
-  log("DEBUG:  %s: %d bytes read: %s", cmd, i, buf_);
+  dlog("DEBUG:  %s: %d bytes read: %s", cmd, i, buf_);
 
-  log("DEBUG:  %s query finished", cmd);
+  dlog("DEBUG:  %s query finished", cmd);
   return true;
 }
 

@@ -18,9 +18,10 @@ bool debug_mode = false;
 
 void SetDebugMode() {
   debug_mode = true;
+  dlog("DEBUG: Debug mode.");
 }
 
-void log(const char* format, ...) {
+void dlog(const char* format, ...) {
   if (!debug_mode) {
     return;
   }
