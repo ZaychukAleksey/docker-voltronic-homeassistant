@@ -37,9 +37,9 @@ class Inverter {
   char warnings_[1024];
   char status1_[1024];
   char status2_[1024];
-  char mode_;
+  char mode_ = 0;
   const std::string device_;
-  std::mutex m_;
+  std::mutex mutex_;
   std::thread t1_;
   std::atomic_bool quit_thread_{false};
 };

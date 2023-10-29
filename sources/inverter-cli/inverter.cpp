@@ -15,42 +15,37 @@ Inverter::Inverter(const std::string& device)
   status1_[0] = 0;
   status2_[0] = 0;
   warnings_[0] = 0;
-  mode_ = 0;
 }
 
 std::string* Inverter::GetQpigsStatus() {
-  m_.lock();
+  std::lock_guard lock(mutex_);
   std::string* result = new std::string(status1_);
-  m_.unlock();
   return result;
 }
 
 std::string* Inverter::GetQpiriStatus() {
-  m_.lock();
+  std::lock_guard lock(mutex_);
   std::string* result = new std::string(status2_);
-  m_.unlock();
   return result;
 }
 
 std::string* Inverter::GetWarnings() {
-  m_.lock();
+  std::lock_guard lock(mutex_);
   std::string* result = new std::string(warnings_);
-  m_.unlock();
   return result;
 }
 
 void Inverter::SetMode(char newmode) {
-  m_.lock();
+  std::lock_guard lock(mutex_);
   if (mode_ && newmode != mode_) {
     ups_status_changed = true;
   }
   mode_ = newmode;
-  m_.unlock();
 }
 
 int Inverter::GetMode() {
   int result;
-  m_.lock();
+  std::lock_guard lock(mutex_);
   switch (mode_) {
     case 'P':
       result = 1;
@@ -74,7 +69,6 @@ int Inverter::GetMode() {
       result = 0;
       break;  // Unknown
   }
-  m_.unlock();
   return result;
 }
 
@@ -224,9 +218,8 @@ void Inverter::Poll() {
     // Reading QPIGS status
     if (!ups_qpigs_changed) {
       if (Query("QPIGS") && strcmp((char*) &buf_[1], "NAK") != 0) {
-        m_.lock();
+        std::lock_guard lock(mutex_);
         strcpy(status1_, (const char*) buf_ + 1);
-        m_.unlock();
         ups_qpigs_changed = true;
       }
     }
@@ -234,9 +227,8 @@ void Inverter::Poll() {
     // Reading QPIRI status
     if (!ups_qpiri_changed) {
       if (Query("QPIRI") && strcmp((char*) &buf_[1], "NAK") != 0) {
-        m_.lock();
+        std::lock_guard lock(mutex_);
         strcpy(status2_, (const char*) buf_ + 1);
-        m_.unlock();
         ups_qpiri_changed = true;
       }
     }
@@ -244,9 +236,8 @@ void Inverter::Poll() {
     // Get any device warnings_...
     if (!ups_qpiws_changed) {
       if (Query("QPIWS") && strcmp((char*) &buf_[1], "NAK") != 0) {
-        m_.lock();
+        std::lock_guard lock(mutex_);
         strcpy(warnings_, (const char*) buf_ + 1);
-        m_.unlock();
         ups_qpiws_changed = true;
       }
     }
@@ -258,9 +249,8 @@ void Inverter::Poll() {
 void Inverter::ExecuteCmd(std::string_view cmd) {
   // Sending any command raw
   if (Query(cmd.data())) {
-    m_.lock();
+    std::lock_guard lock(mutex_);
     strcpy(status2_, (const char*) buf_ + 1);
-    m_.unlock();
   }
 }
 
