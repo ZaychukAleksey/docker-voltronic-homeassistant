@@ -1,24 +1,31 @@
-FROM debian:stretch
+FROM debian:bullseye-slim
 
-# Update stretch repositories
-RUN sed -i -e 's/deb.debian.org/archive.debian.org/g' \
-           -e 's|security.debian.org|archive.debian.org/|g' \
-           -e '/stretch-updates/d' /etc/apt/sources.list
+# Copy files.
+COPY sources/ /opt/
+COPY config/ /opt/
 
-RUN apt update && apt install -y \
+RUN \
+    # Install required packages.
+    apt update && apt -y install --no-install-recommends \
+        # Curl is used to work with InfluxDB
         curl \
-        git \
+        # These are required to build inverter_poller
         build-essential \
         cmake \
+        # These are required to work with MQTT
         jq \
-        mosquitto-clients
+        mosquitto-clients \
+    # Build inverter_poller binary. It will be placed to /opt.
+    && cd /opt/inverter-cli && mkdir bin && cmake . && make && mv inverter_poller /opt/ \
+    # Cleanup trash to reduce the size of the container.
+    && apt -y clean \
+    && apt -y purge build-essential \
+    && apt -y purge cmake \
+    && apt -y autoremove \
+    && rm -rf /opt/inverter-cli
 
-ADD sources/ /opt/
-ADD config/ /etc/inverter/
 
-RUN cd /opt/inverter-cli && \
-    mkdir bin && cmake . && make && mv inverter_poller bin/
-
+# https://docs.docker.com/engine/reference/builder/#healthcheck
 HEALTHCHECK \
     --interval=30s \
     --timeout=10s \

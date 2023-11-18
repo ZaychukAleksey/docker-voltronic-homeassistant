@@ -1,37 +1,31 @@
+# Version of the syntax used in this file, required for docker-compose itself.
+# https://docs.docker.com/compose/compose-file/compose-file-v3
 version: '3'
 
 services:
   voltronic-mqtt:
-
-    # We're now (finally) supporting Multi-Arch builds (via Github actions) on Docker Hub!
-    image: bushrangers/ha-voltronic-mqtt
-
-    # Uncomment if you want to build your own local version.
+    # If that "build" section is not commented out, then the image will be built
+    # locally rather than pulled from the dockerhub.
     build:
       context: .
       dockerfile: Dockerfile.dev
 
+    # We're now (finally) supporting Multi-Arch builds (via Github actions) on Docker Hub!
+    # https://community.ibm.com/community/user/powerdeveloper/blogs/siddhesh-ghadi/2023/02/08/build-multi-arch-images-on-github-actions-with-bui
+    image: bushrangers/ha-voltronic-mqtt
 
     container_name: voltronic-mqtt
 
+    # Give extended privileges to this container. That allows us to access USB or serial ports.
+    # https://docs.docker.com/engine/reference/run/#runtime-privilege-and-linux-capabilities
     privileged: true
+
+    # https://docs.docker.com/config/containers/start-containers-automatically/#use-a-restart-policy
     restart: always
 
+    # Mount "config" directory to the container so it will be accessible by inverter_poller.
     volumes:
-        - ./config/:/etc/inverter/
-
-    devices:
-    #  - "/dev/mem:/dev/mem"
-
-    # USB Port Mapping
-      - /dev/bus/usb:/dev/bus/usb:rwm
-      - /dev/ttyUSB0:/dev/ttyUSB0:rwm
-      - /dev/ttyUSB1:/dev/ttyUSB1:rwm
-
-    # Serial Port Mapping...
-      - /dev/ttyS0:/dev/ttyS0
-      - /dev/ttyS1:/dev/ttyS1
-      - /dev/ttyS2:/dev/ttyS2
+      - ./config/:/etc/inverter/
 
   # Used to auto-update images as we release new versions...
   #watchtower:

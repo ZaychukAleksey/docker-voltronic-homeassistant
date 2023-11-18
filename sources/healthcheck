@@ -1,4 +1,5 @@
 #!/bin/bash
+# This healthcheck is used to check that the container is working, i.e. isn't stuck.
 
 PROC=`ps cax | grep -E "mqtt-subscriber|mosquitto_sub" | awk '{print $5}' | sort -u | wc -l`
 
