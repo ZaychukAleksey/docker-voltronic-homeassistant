@@ -7,6 +7,7 @@
 #include <cstdio>
 #include <iostream>
 #include <string>
+#include <unistd.h>
 
 #include "configuration.h"
 #include "inverter.h"
@@ -120,9 +121,8 @@ int main(int argc, char* argv[]) {
 
   // Logic to send 'raw commands' to the inverter.
   if (arguments.IsSet("-r")) {
-    inverter.ExecuteCmd(arguments.Get("-r"));
-    // We can piggyback on either GetStatus() function to return our result, it doesn't matter which
-    printf("Reply:  %s\n", inverter.GetQpiriStatusRaw().c_str());
+    const auto reply = inverter.Query(arguments.Get("-r"), false);
+    printf("Reply:  %s\n", reply.c_str());
     return 0;
   }
 
@@ -132,7 +132,7 @@ int main(int argc, char* argv[]) {
       // The output is expected to be parsed by another tool.
       PrintResultInJson(inverter, settings);
     } else {
-      dlog("ERROF: Failed to retrieve all data from inverter.");
+      dlog("ERROR: Failed to retrieve all data from inverter.");
     }
 
     if (run_once) {

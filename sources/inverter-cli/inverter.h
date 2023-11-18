@@ -19,19 +19,18 @@ class Inverter {
   QpigsData GetQpigsStatus() const;
   /// Device Rated Information inquiry.
   QpiriData GetQpiriStatus() const;
-  std::string GetQpiriStatusRaw() const;
   std::string GetWarnings() const;
 
   int GetMode() const;
-  void ExecuteCmd(std::string_view cmd);
+  [[nodiscard]] std::string Query(std::string_view cmd, bool with_crc = true);
 
  private:
   int Connect();
 
   void SetMode(char newmode);
-  bool Query(std::string_view cmd);
+  [[nodiscard]] std::string ReadResponse(int);
 
-  unsigned char buf_[1024]; //internal work buffer
+  std::string_view current_query_;
   char warnings_[1024];
   char status1_[1024];
   char status2_[1024];

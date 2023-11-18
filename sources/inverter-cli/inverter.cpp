@@ -1,47 +1,60 @@
+#include "inverter.h"
+
 #include <cstdio>
 #include <cstring>
 #include <fcntl.h>
-#include <syslog.h>
+#include <sys/file.h>
 #include <termios.h>
 #include <unistd.h>
+#include <sys/ioctl.h>
 
-#include "inverter.h"
+#include "exceptions.h"
 #include "logging.h"
+#include "CRC.h"
 
 namespace {
 
-uint16_t CalCrcHalf(const uint8_t* pin, uint8_t len) {
-  constexpr uint16_t crc_ta[16] = {
-      0x0000, 0x1021, 0x2042, 0x3063, 0x4084, 0x50a5, 0x60c6, 0x70e7,
-      0x8108, 0x9129, 0xa14a, 0xb16b, 0xc18c, 0xd1ad, 0xe1ce, 0xf1ef
-  };
-  const uint8_t* ptr = pin;
-  uint16_t crc = 0;
+/// "<cr>" from protocol description.
+/// https://en.wikipedia.org/wiki/Carriage_return
+constexpr char kCarriageReturn = '\r';
 
-  uint8_t da;
-  while (len-- != 0) {
-    da = ((uint8_t)(crc >> 8)) >> 4;
-    crc <<= 4;
-    crc ^= crc_ta[da ^ (*ptr >> 4)];
-    da = ((uint8_t)(crc >> 8)) >> 4;
-    crc <<= 4;
-    crc ^= crc_ta[da ^ (*ptr & 0x0f)];
-    ++ptr;
+//Generate 8 bit CRC of supplied string + 1 as used in REVO PI30 protocol
+//CHK=DATE0+....+1
+//CHK=The accumulated value of sent data+1, single byte.
+char CHK(std::string_view s) {
+  int crc = 0;
+  for (char c: s) {
+    crc += c;
   }
-  uint8_t bCRCLow = crc;
-  uint8_t bCRCHign = (uint8_t)(crc >> 8);
-  if (bCRCLow == 0x28 || bCRCLow == 0x0d || bCRCLow == 0x0a)
-    bCRCLow++;
-  if (bCRCHign == 0x28 || bCRCHign == 0x0d || bCRCHign == 0x0a)
-    bCRCHign++;
-  crc = ((uint16_t) bCRCHign) << 8;
-  crc += bCRCLow;
+  ++crc;
+  crc &= 0xFF;
   return crc;
 }
 
-bool CheckCRC(const unsigned char* data, int len) {
-  uint16_t crc = CalCrcHalf(data, len - 3);
-  return data[len - 3] == (crc >> 8) && data[len - 2] == (crc & 0xff);
+std::string GetCRC(std::string_view query) {
+  const uint16_t crc = CRC::Calculate(query.data(), query.length(), CRC::CRC_16_XMODEM());
+  std::string result = {static_cast<char>(crc >> 8), static_cast<char>(crc & 0xff)};
+//  std::string result = {static_cast<char>(crc & 0xff), static_cast<char>(crc >> 8)};
+  dlog("CRC: %x %x.", result[0], result[1]);
+  return result;
+}
+
+bool CheckCRC(std::string_view data) {
+  const uint16_t actual_crc = CRC::Calculate(data.data(), data.length() - 3, CRC::CRC_16_XMODEM());
+  char crc[2] = {static_cast<char>(actual_crc >> 8), static_cast<char>(actual_crc & 0xff)};
+  dlog("Actual CRC: %x %x. Expected: %x %x", crc[0], crc[1], data[data.length() - 3], data[data.length() - 2]);
+  return data[data.length() - 3] == crc[0] && data[data.length() - 2] == crc[1];
+}
+
+time_t CurrentTimeInSeconds() {
+  return time(nullptr);
+}
+
+/// To see what we sent in HEX.
+void LogQueryInHex(std::string_view query) {
+  if (!IsInDebugMode()) return;
+
+  dlog("Send: '%s', hex: %s.", EscapeString(query).c_str(), PrintBytesAsHex(query).c_str());
 }
 
 }  // namespace
@@ -118,10 +131,6 @@ QpiriData Inverter::GetQpiriStatus() const {
   return result;
 }
 
-std::string Inverter::GetQpiriStatusRaw() const {
-  return {status2_};
-}
-
 std::string Inverter::GetWarnings() const {
   return {warnings_};
 }
@@ -153,157 +162,168 @@ int Inverter::Connect() {
     throw std::runtime_error(err_message);
   }
 
+  // Acquire exclusive lock (non-blocking - flock won't block if someone already locks the port).
+  if (flock(fd, LOCK_EX | LOCK_NB) == -1) {
+    throw std::runtime_error("Serial port with file descriptor " +
+                             std::to_string(fd) + " is already locked by another process.");
+  }
+
   // Set the baud rate and other serial config. Settings are: 2400 8N1.
   struct termios settings;
-  tcgetattr(fd, &settings);
+  if (tcgetattr(fd, &settings)) {
+    printf("Error %i from tcgetattr: %s\n", errno, strerror(errno));
+    throw std::runtime_error("");
+  }
 
-  cfsetospeed(&settings, B2400);     // baud rate
-  settings.c_cflag &= ~PARENB;       // no parity
-  settings.c_cflag &= ~CSTOPB;       // 1 stop bit
-  settings.c_cflag &= ~CSIZE;
-  settings.c_cflag |= CS8 | CLOCAL;  // 8 bits
-  // settings.c_lflag = ICANON;         // canonical mode_
-  settings.c_oflag &= ~OPOST;        // raw output
+  // https://man7.org/linux/man-pages/man3/termios.3.html
+  // https://blog.mbedded.ninja/programming/operating-systems/linux/linux-serial-ports-using-c-cpp/
+  cfsetspeed(&settings, B2400);      // baud rate
+  settings.c_cflag &= ~PARENB;       // Clear parity bit, thus no parity is used.
+  settings.c_cflag &= ~CSTOPB;       // Clear stop bit, thus only 1 stop bit (default) will be used.
+  settings.c_cflag &= ~CSIZE;        // Clear number of bits per byte, and...
+  settings.c_cflag |= CS8;           // ... use 8 bits
+  settings.c_cflag &= ~CRTSCTS;      // Disable RTS/CTS hardware flow control (usage of two extra wires between the end points).
+  settings.c_cflag |= CLOCAL;        // Ignore ctrl lines.
+  settings.c_oflag |= CREAD;         // Allow reading data.
+  settings.c_lflag = 0;              // Reset all Local Modes.
 
-  tcsetattr(fd, TCSANOW, &settings); // apply the settings
+  // Input settings
+  settings.c_iflag &= ~ISIG;         // Disable interpretation of INTR, QUIT and SUSP
+  settings.c_iflag &= ~(IXON | IXOFF | IXANY); // Turn off software flow ctrl
+  settings.c_iflag &= ~(IGNBRK|BRKINT|PARMRK|ISTRIP|INLCR|IGNCR|ICRNL); // Disable any special handling of received bytes
+
+  // Output settings
+  settings.c_oflag &= ~OPOST;        // Raw output.
+  settings.c_oflag &= ~ONLCR;        // Prevent conversion of newline to carriage return/line feed
+
+  // apply the settings
+  if (tcsetattr(fd, TCSANOW, &settings)) {
+    printf("Error %i from tcsetattr: %s\n", errno, strerror(errno));
+    throw std::runtime_error("");
+  }
   tcflush(fd, TCOFLUSH);
+  return fd;
 }
 
-bool Inverter::Query(std::string_view cmd) {
-  time_t started;
-  int i = 0;
+int AvailableBytes(int device) {
+  int bytes;
+  ioctl(device, FIONREAD, &bytes);
+  return bytes;
+}
 
-  const auto device = Connect();
-
-  // Generating CRC for a command
-  uint16_t crc = CalCrcHalf(reinterpret_cast<const uint8_t*>(cmd.data()), cmd.length());
-  auto n = cmd.length();
-  memcpy(&buf_, cmd.data(), n);
-  dlog("DEBUG:  Current CRC: %X %X", crc >> 8, crc & 0xff);
-  buf_[n++] = crc >> 8;
-  buf_[n++] = crc & 0xff;
-  buf_[n++] = 0x0d;
-
-  // Send buffer in hex
-  char messagestart[128];
-  char* messageptr = messagestart;
-  sprintf(messagestart, "DEBUG:  Send buffer hex bytes:  ( ");
-  messageptr += strlen(messagestart);
-
-  for (int j = 0; j < n; j++) {
-    int size = sprintf(messageptr, "%02x ", buf_[j]);
-    messageptr += 3;
-  }
-  dlog("%s)", messagestart);
-
-  /* The below command doesn't take more than an 8-byte payload 5 chars (+ 3
-     bytes of <CRC><CRC><CR>).  It has to do with low speed USB specifications.
-     So we must chunk up the data and send it in a loop 8 bytes at a time.  */
-
-  // Send the command (or part of the command if longer than chunk_size)
-  int chunk_size = 8;
-  // Send in chunks of 8 bytes, if less than 8 bytes to send... just send that
-  if (n < chunk_size) {
-    chunk_size = n;
-  }
+void WriteToSerialPort(int device, std::string_view query) {
+  // The below command doesn't take more than an 8-byte payload 5 chars (+ 3
+  // bytes of <CRC><CRC><CR>).  It has to do with low speed USB specifications.
+  // So we must chunk up the data and send it in a loop 8 bytes at a time.
   int bytes_sent = 0;
-  int remaining = n;
+  int remaining = query.length();
 
   while (remaining > 0) {
-    auto written = write(device, &buf_[bytes_sent], chunk_size);
-    bytes_sent += written;
-    if (remaining - written >= 0)
+    const auto bytes_to_send = (remaining > 8) ? 8 : remaining;
+    const auto written = write(device, query.data() + bytes_sent, bytes_to_send);
+    if (written < 0) {
+      // TODO thrown an exception?
+      log("ERROR: Write command failed: %s.", strerror(errno));
+    } else {
+      bytes_sent += written;
       remaining -= written;
-    else
-      remaining = 0;
-
-    if (written < 0)
-      dlog("DEBUG:  Write command failed, error number %d was returned", errno);
-    else
-      dlog("DEBUG:  %d bytes written, %d bytes sent, %d bytes remaining", written, bytes_sent,
-           remaining);
-
-    chunk_size = remaining;
-    usleep(50000);   // Sleep 50ms before sending another 8 bytes of info
+    }
+    usleep(500000);   // Sleep 50ms before sending another 8 bytes of info
   }
+}
 
-  time(&started);
+/// @throws TimeoutException if the response can't be read in 5 seconds.
+std::string Inverter::ReadResponse(int device) {
+  // We can't read or wait for response data infinitely. Use a timeout.
+  // TODO use VMIN = 0, VTIME > 0 in port settings.
+  const time_t deadline_time = CurrentTimeInSeconds() + 5;
 
-  // Instead of using a fixed size for expected response length, lets find it
-  // by searching for the first returned <cr> char instead.
-  char* startbuf = 0;
-  char* endbuf = 0;
-  do {
-    // According to protocol manual, it appears no query should ever exceed 120 byte size in response
-    n = read(device, (void*) buf_ + i, 120 - i);
-    if (n < 0) {
-      // Wait 5 secs before timeout
-      if (time(NULL) - started > 5) {
-        dlog("DEBUG:  %s read timeout", cmd);
-        break;
+  char buffer[1024];
+  int bytes_read = 0;
+
+  // Each response from inverter ends with <cr> (carriage return). So we read data until we find it.
+  while (true) {
+    dlog("Available %d bytes.", AvailableBytes(device));
+    const auto n_bytes = read(device, buffer + bytes_read, std::size(buffer) - bytes_read);
+    if (n_bytes < 0) {
+      if (CurrentTimeInSeconds() > deadline_time) {
+        throw TimeoutException(std::string(current_query_) + " read timeout");
       } else {
+        // TODO: make it configurable
         usleep(50000);  // sleep 50ms
         continue;
       }
     }
-    i += n;
-    buf_[i] = '\0';  // terminate what we have so far with a null string
-    dlog("DEBUG:  %d bytes read, %d total bytes:  %02x %02x %02x %02x %02x %02x %02x %02x",
-        n, i, buf_[i - 8], buf_[i - 7], buf_[i - 6], buf_[i - 5], buf_[i - 4], buf_[i - 3],
-        buf_[i - 2], buf_[i - 1]);
 
-    startbuf = (char*) &buf_[0];
-    endbuf = strchr(startbuf, '\r');
+    const std::string_view data{&buffer[bytes_read], static_cast<std::size_t>(n_bytes)};
+    dlog("Read %d bytes: '%s', hex: %s.", n_bytes, EscapeString(data).data(), PrintBytesAsHex(data).c_str());
+    bytes_read += n_bytes;
+    if (data.back() == kCarriageReturn) {
+      break;
+    }
+  }
 
-    //log("DEBUG:  %s Current buffer: %s", cmd, startbuf);
-  } while (endbuf == nullptr);     // Still haven't found end <cr> char as long as pointer is null
+  dlog("Available %d bytes.", AvailableBytes(device));
+  return std::string(buffer, bytes_read);
+}
+
+std::string Inverter::Query(std::string_view cmd, bool with_crc) {
+  current_query_ = cmd;
+
+  const auto device = Connect();
+  std::string query(cmd);
+  if (with_crc) {
+    query += GetCRC(query);
+  }
+
+  query += kCarriageReturn;  // Each query must end with carriage return (<cr>).
+  LogQueryInHex(query);
+
+  WriteToSerialPort(device, query);
+
+  auto response = ReadResponse(device);
   close(device);
 
-  int replysize = endbuf - startbuf + 1;
-  dlog("DEBUG:  Found reply <cr> at byte: %d", replysize);
-
-  if (buf_[0] != '(' || buf_[replysize - 1] != 0x0d) {
-    dlog("DEBUG:  %s: incorrect buffer start/stop bytes.  Buffer: %s", cmd, buf_);
-    return false;
+  // All responses should start with "(".
+  if (response.front() != '(') {
+    // TODO: throw
+    dlog("ERROR: %s reply incorrect start/stop bytes: %s.", cmd.data(), response.c_str());
+    return "";
   }
-  if (!(CheckCRC(buf_, replysize))) {
-    dlog("DEBUG:  %s: CRC Failed!  Reply size: %d  Buffer: %s", cmd, replysize, buf_);
-    return false;
+  if (!CheckCRC(response)) {
+    // TODO: throw
+    dlog("ERROR: CRC check Failed!");
+    return "";
   }
-  buf_[replysize - 3] = '\0';      // Null-terminating on first CRC byte
-  dlog("DEBUG:  %s: %d bytes read: %s", cmd, i, buf_);
 
-  dlog("DEBUG:  %s query finished", cmd);
-  return true;
+  // Cut crc and carriage return bytes.
+  response.resize(response.length() - 3);
+
+  dlog("%s query finished", cmd.data());
+  // TODO strip the response from leading "(" and trailing crc and cr
+  return response;
 }
 
 // TODO: fix "NAK" behavior
 bool Inverter::Poll() {
   // Reading mode_
-  if (Query("QMOD") && strcmp((char*) &buf_[1], "NAK") != 0) {
-    SetMode(buf_[1]);
-  }
-
-  // Reading QPIGS status
-  if (Query("QPIGS") && strcmp((char*) &buf_[1], "NAK") != 0) {
-    strcpy(status1_, (const char*) buf_ + 1);
-  }
-
-  // Reading QPIRI status
-  if (Query("QPIRI") && strcmp((char*) &buf_[1], "NAK") != 0) {
-    strcpy(status2_, (const char*) buf_ + 1);
-  }
-
-  // Get any device warnings_...
-  if (Query("QPIWS") && strcmp((char*) &buf_[1], "NAK") != 0) {
-    strcpy(warnings_, (const char*) buf_ + 1);
-  }
+//  if (Query("QMOD") && strcmp((char*) &buf_[1], "NAK") != 0) {
+//    SetMode(buf_[1]);
+//  }
+//
+//  // Reading QPIGS status
+//  if (Query("QPIGS") && strcmp((char*) &buf_[1], "NAK") != 0) {
+//    strcpy(status1_, (const char*) buf_ + 1);
+//  }
+//
+//  // Reading QPIRI status
+//  if (Query("QPIRI") && strcmp((char*) &buf_[1], "NAK") != 0) {
+//    strcpy(status2_, (const char*) buf_ + 1);
+//  }
+//
+//  // Get any device warnings_...
+//  if (Query("QPIWS") && strcmp((char*) &buf_[1], "NAK") != 0) {
+//    strcpy(warnings_, (const char*) buf_ + 1);
+//  }
   return true;
-}
-
-void Inverter::ExecuteCmd(std::string_view cmd) {
-  // Sending any command raw
-  if (Query(cmd.data())) {
-    strcpy(status2_, (const char*) buf_ + 1);
-  }
 }
