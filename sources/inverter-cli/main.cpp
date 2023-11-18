@@ -11,7 +11,8 @@
 
 #include "configuration.h"
 #include "inverter.h"
-#include "logging.h"
+
+#include "spdlog/spdlog.h"
 
 
 void PrintHelp() {
@@ -39,7 +40,7 @@ void PrintHelp() {
 }
 
 const std::string& GetConfigurationFileName(const CommandLineArguments& cmd_args) {
-  static std::string kConfigurationFile = "./inverter.conf";
+  static const std::string kConfigurationFile = "./inverter.conf";
   return cmd_args.IsSet("-c") ? cmd_args.Get("-c") : kConfigurationFile;
 }
 
@@ -113,7 +114,10 @@ int main(int argc, char* argv[]) {
     return 0;
   }
   if (arguments.IsSet("-d")) {
-    SetDebugMode();
+    spdlog::set_level(spdlog::level::debug);
+    spdlog::debug("Debug logging enabled.");
+  } else {
+    spdlog::set_level(spdlog::level::err);
   }
 
   auto settings = LoadSettingsFromFile(GetConfigurationFileName(arguments));
@@ -132,7 +136,7 @@ int main(int argc, char* argv[]) {
       // The output is expected to be parsed by another tool.
       PrintResultInJson(inverter, settings);
     } else {
-      dlog("ERROR: Failed to retrieve all data from inverter.");
+      spdlog::error("Failed to retrieve all data from inverter.");
     }
 
     if (run_once) {

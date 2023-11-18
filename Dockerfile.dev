@@ -12,6 +12,7 @@ RUN \
         # These are required to build inverter_poller
         build-essential \
         cmake \
+        libspdlog-dev \
         # These are required to work with MQTT
         jq \
         mosquitto-clients \

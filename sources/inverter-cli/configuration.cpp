@@ -4,6 +4,8 @@
 #include <fstream>
 #include <string>
 
+#include "spdlog/fmt/fmt.h"
+
 CommandLineArguments::CommandLineArguments(int argc, char** argv) {
   for (int i = 1; i < argc; ++i) {
     tokens_.emplace_back(argv[i]);
@@ -15,7 +17,7 @@ const std::string& CommandLineArguments::Get(std::string_view option) const {
   if (itr != tokens_.end() && ++itr != tokens_.end()) {
     return *itr;
   }
-  throw std::runtime_error("ERROR: option '" + std::string(option) + "' hasn't been specified.");
+  throw std::runtime_error(fmt::format("ERROR. Option '{}' hasn't been specified.", option));
 }
 
 bool CommandLineArguments::IsSet(std::string_view option, std::string_view option_alias) const {
@@ -32,15 +34,16 @@ static float ToFloat(const std::string& option_name, const std::string& option_v
   try {
     return stof(option_value);
   } catch (...) {
-    throw std::runtime_error("ERROR: incorrect value '" + option_value + "' for option '"
-                             + option_name + "'. Floating point value is expected.");
+    throw std::runtime_error(fmt::format(
+        "ERROR. Incorrect value '{}' for option '{}'. Floating point value is expected.",
+        option_value, option_name));
   }
 }
 
 Settings LoadSettingsFromFile(const std::string& filename) {
   std::ifstream file(filename);
   if (!file) {
-    throw std::runtime_error("ERROR: failed to open configuration file " + filename);
+    throw std::runtime_error("ERROR. Failed to open configuration file: " + filename);
   }
 
   Settings result;
@@ -52,7 +55,7 @@ Settings LoadSettingsFromFile(const std::string& filename) {
 
     const auto delimiter = line.find('=');
     if (delimiter == std::string::npos || delimiter == 0 || (delimiter == line.length() - 1)) {
-      throw std::runtime_error("ERROR: incorrect line in configuration file: \"" + line + '"');
+      throw std::runtime_error("ERROR. Incorrect line in configuration file: \"" + line + '"');
     }
 
     auto parameter_name = line.substr(0, delimiter);
@@ -64,7 +67,7 @@ Settings LoadSettingsFromFile(const std::string& filename) {
     } else if (parameter_name == "watt_factor") {
       result.watt_factor = ToFloat(parameter_name, parameter_value);
     } else {
-      throw std::runtime_error("ERROR: unknown configuration parameter: " + parameter_name);
+      throw std::runtime_error("ERROR. Unknown configuration parameter: " + parameter_name);
     }
   }
   return result;

@@ -8,9 +8,11 @@
 #include <unistd.h>
 #include <sys/ioctl.h>
 
-#include "exceptions.h"
-#include "logging.h"
 #include "CRC.h"
+#include "exceptions.h"
+#include "utils.h"
+
+#include "spdlog/spdlog.h"
 
 namespace {
 
@@ -33,16 +35,14 @@ char CHK(std::string_view s) {
 
 std::string GetCRC(std::string_view query) {
   const uint16_t crc = CRC::Calculate(query.data(), query.length(), CRC::CRC_16_XMODEM());
-  std::string result = {static_cast<char>(crc >> 8), static_cast<char>(crc & 0xff)};
-//  std::string result = {static_cast<char>(crc & 0xff), static_cast<char>(crc >> 8)};
-  dlog("CRC: %x %x.", result[0], result[1]);
-  return result;
+  return {static_cast<char>(crc >> 8), static_cast<char>(crc & 0xff)};
 }
 
 bool CheckCRC(std::string_view data) {
   const uint16_t actual_crc = CRC::Calculate(data.data(), data.length() - 3, CRC::CRC_16_XMODEM());
   char crc[2] = {static_cast<char>(actual_crc >> 8), static_cast<char>(actual_crc & 0xff)};
-  dlog("Actual CRC: %x %x. Expected: %x %x", crc[0], crc[1], data[data.length() - 3], data[data.length() - 2]);
+  spdlog::debug("Actual CRC: {:02x} {:02x}. Expected: {:02x} {:02x}", crc[0], crc[1],
+                data[data.length() - 3], data[data.length() - 2]);
   return data[data.length() - 3] == crc[0] && data[data.length() - 2] == crc[1];
 }
 
@@ -52,9 +52,7 @@ time_t CurrentTimeInSeconds() {
 
 /// To see what we sent in HEX.
 void LogQueryInHex(std::string_view query) {
-  if (!IsInDebugMode()) return;
-
-  dlog("Send: '%s', hex: %s.", EscapeString(query).c_str(), PrintBytesAsHex(query).c_str());
+  spdlog::debug("Send: '{}', hex: {}.", EscapeString(query), PrintBytesAsHex(query));
 }
 
 }  // namespace
@@ -158,7 +156,7 @@ int Inverter::Connect() {
   auto fd = open(device_.data(), O_RDWR | O_NONBLOCK);
   if (fd == -1) {
     auto err_message("ERROR: Unable to open device " + device_ + ". " + strerror(errno) + '.');
-    dlog(err_message.c_str());
+    spdlog::debug(err_message);
     throw std::runtime_error(err_message);
   }
 
@@ -223,7 +221,7 @@ void WriteToSerialPort(int device, std::string_view query) {
     const auto written = write(device, query.data() + bytes_sent, bytes_to_send);
     if (written < 0) {
       // TODO thrown an exception?
-      log("ERROR: Write command failed: %s.", strerror(errno));
+      spdlog::info("ERROR: Write command failed: {}.", strerror(errno));
     } else {
       bytes_sent += written;
       remaining -= written;
@@ -243,7 +241,7 @@ std::string Inverter::ReadResponse(int device) {
 
   // Each response from inverter ends with <cr> (carriage return). So we read data until we find it.
   while (true) {
-    dlog("Available %d bytes.", AvailableBytes(device));
+    spdlog::debug("Available {} bytes.", AvailableBytes(device));
     const auto n_bytes = read(device, buffer + bytes_read, std::size(buffer) - bytes_read);
     if (n_bytes < 0) {
       if (CurrentTimeInSeconds() > deadline_time) {
@@ -256,14 +254,15 @@ std::string Inverter::ReadResponse(int device) {
     }
 
     const std::string_view data{&buffer[bytes_read], static_cast<std::size_t>(n_bytes)};
-    dlog("Read %d bytes: '%s', hex: %s.", n_bytes, EscapeString(data).data(), PrintBytesAsHex(data).c_str());
+    spdlog::debug("Read {} bytes: '{}', hex: {}.",
+                  n_bytes, EscapeString(data), PrintBytesAsHex(data));
     bytes_read += n_bytes;
     if (data.back() == kCarriageReturn) {
       break;
     }
   }
 
-  dlog("Available %d bytes.", AvailableBytes(device));
+  spdlog::debug("Available {} bytes.", AvailableBytes(device));
   return std::string(buffer, bytes_read);
 }
 
@@ -284,23 +283,14 @@ std::string Inverter::Query(std::string_view cmd, bool with_crc) {
   auto response = ReadResponse(device);
   close(device);
 
-  // All responses should start with "(".
-  if (response.front() != '(') {
-    // TODO: throw
-    dlog("ERROR: %s reply incorrect start/stop bytes: %s.", cmd.data(), response.c_str());
-    return "";
-  }
   if (!CheckCRC(response)) {
-    // TODO: throw
-    dlog("ERROR: CRC check Failed!");
-    return "";
+    throw CrcMismatchException();
   }
 
   // Cut crc and carriage return bytes.
   response.resize(response.length() - 3);
 
-  dlog("%s query finished", cmd.data());
-  // TODO strip the response from leading "(" and trailing crc and cr
+  spdlog::debug("'{}' query finished", cmd);
   return response;
 }
 
