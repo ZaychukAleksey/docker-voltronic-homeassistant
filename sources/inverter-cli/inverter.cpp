@@ -155,8 +155,7 @@ int Inverter::GetMode() const {
 int Inverter::Connect() {
   auto fd = open(device_.data(), O_RDWR | O_NONBLOCK);
   if (fd == -1) {
-    auto err_message("ERROR: Unable to open device " + device_ + ". " + strerror(errno) + '.');
-    spdlog::debug(err_message);
+    auto err_message("Unable to open device " + device_ + ". " + strerror(errno) + '.');
     throw std::runtime_error(err_message);
   }
 

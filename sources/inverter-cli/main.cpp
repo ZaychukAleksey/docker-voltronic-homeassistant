@@ -13,6 +13,7 @@
 #include "inverter.h"
 
 #include "spdlog/spdlog.h"
+#include "spdlog/sinks/stdout_color_sinks.h"
 
 
 void PrintHelp() {
@@ -107,18 +108,24 @@ void PrintResultInJson(const Inverter& inverter, const Settings& settings) {
   printf("}\n");
 }
 
-int main(int argc, char* argv[]) {
-  CommandLineArguments arguments(argc, argv);
-  if (arguments.IsSet("-h", "--help")) {
-    PrintHelp();
-    return 0;
-  }
+void InitLogging(const CommandLineArguments& arguments) {
+  spdlog::set_default_logger(spdlog::stderr_color_st("std err"));
+  spdlog::set_pattern("[%H:%M:%S.%e %^%l%$] %v");
   if (arguments.IsSet("-d")) {
     spdlog::set_level(spdlog::level::debug);
     spdlog::debug("Debug logging enabled.");
   } else {
     spdlog::set_level(spdlog::level::err);
   }
+}
+
+int main(int argc, char* argv[]) {
+  CommandLineArguments arguments(argc, argv);
+  if (arguments.IsSet("-h", "--help")) {
+    PrintHelp();
+    return 0;
+  }
+  InitLogging(arguments);
 
   auto settings = LoadSettingsFromFile(GetConfigurationFileName(arguments));
   Inverter inverter(settings.device_name);
@@ -143,6 +150,7 @@ int main(int argc, char* argv[]) {
       break;
     }
 
+    // TODO add config option
     sleep(5);
   }
 
