@@ -10,7 +10,7 @@
 #include <unistd.h>
 
 #include "configuration.h"
-#include "inverter.h"
+#include "protocols/protocol_adapter.hh"
 
 #include "spdlog/spdlog.h"
 #include "spdlog/sinks/stdout_color_sinks.h"
@@ -21,6 +21,7 @@ void PrintHelp() {
       << "\nUSAGE:  ./inverter_poller <args> [-r <command>], [-h | --help], [-1 | --run-once]\n\n"
          "SUPPORTED ARGUMENTS:\n"
          "    -r <raw-command>      TX 'raw' command to the inverter\n"
+         "    --crc                 Append CRC to the raw command\n"
          "    -h | --help           This Help Message\n"
          "    -1 | --run-once       Runs one iteration on the inverter, and then exits\n"
          "    -c                    Optional path to the configuration file (default: ./inverter.conf)"
@@ -45,66 +46,77 @@ const std::string& GetConfigurationFileName(const CommandLineArguments& cmd_args
   return cmd_args.IsSet("-c") ? cmd_args.Get("-c") : kConfigurationFile;
 }
 
-void PrintResultInJson(const Inverter& inverter, const Settings& settings) {
+std::string ConcatenateWarnings(const std::vector<std::string> warnings) {
+  std::string result;
+  for (const auto& warning : warnings) {
+    if (!result.empty()) result += ';';
+    result += warning;
+  }
+  return result;
+}
+
+void PrintResultInJson(ProtocolAdapter& adapter, const Settings& settings) {
   // Calculate watt-hours generated per run interval period (given as program argument)
   // pv_input_watthour = pv_input_watts / (3600000 / runinterval);
   // load_watthour = (float)load_watt / (3600000 / runinterval);
 
-  int mode = inverter.GetMode();
-  const auto qpigs = inverter.GetQpigsStatus();
-  const auto qpiri = inverter.GetQpiriStatus();
-  const auto warnings = inverter.GetWarnings();
+  auto mode = adapter.GetMode();
+  auto rated_info = adapter.GetRatedInformation();
+  auto warnings = adapter.GetWarnings();
+  auto info = adapter.GetGeneralInfo();
 
   // There appears to be a discrepancy in actual DMM measured current vs what the meter is
   // telling me it's getting, so lets add a variable we can multiply/divide by to adjust if
   // needed.  This should be set in the config so it can be changed without program recompile.
-  const auto pv_input_current = qpigs.pv_input_current_for_battery * settings.amperage_factor;
+  auto pv_input_current = info.pv_input_voltage > 0
+                          ? info.pv_input_power / info.pv_input_voltage
+                          : 0.f;
+//  const auto pv_input_current = info.pv_input_current * settings.amperage_factor;
 
   // It appears on further inspection of the documentation, that the input current is actually
   // current that is going out to the battery at battery voltage (NOT at PV voltage).  This
   // would explain the larger discrepancy we saw before.
-  const auto pv_input_watts = (qpigs.battery_voltage_from_scc * pv_input_current) * settings.watt_factor;
+//  const auto pv_input_watts = (info.battery_voltage_from_scc * pv_input_current) * settings.watt_factor;
 
   printf("{\n");
-
-  printf("  \"Inverter_mode\":%d,\n", mode);
-  printf("  \"AC_grid_voltage\":%.1f,\n", qpigs.grid_voltage);
-  printf("  \"AC_grid_frequency\":%.1f,\n", qpigs.grid_frequency);
-  printf("  \"AC_out_voltage\":%.1f,\n", qpigs.ac_output_voltage);
-  printf("  \"AC_out_frequency\":%.1f,\n", qpigs.ac_output_frequency);
-  printf("  \"PV_in_voltage\":%.1f,\n", qpigs.pv_input_voltage);
-  printf("  \"PV_in_current\":%.1f,\n", qpigs.pv_input_current_for_battery);
-  printf("  \"PV_in_watts\":%.1f,\n", pv_input_watts);
-  printf("  \"SCC_voltage\":%.4f,\n", qpigs.battery_voltage_from_scc);
-  printf("  \"Load_pct\":%d,\n", qpigs.output_load_percent);
-  printf("  \"Load_watt\":%d,\n", qpigs.ac_output_active_power);
-  printf("  \"Load_va\":%d,\n", qpigs.ac_output_apparent_power);
-  printf("  \"Bus_voltage\":%d,\n", qpigs.bus_voltage);
-  printf("  \"Heatsink_temperature\":%d,\n", qpigs.inverter_heat_sink_temperature);
-  printf("  \"Battery_capacity\":%d,\n", qpigs.battery_capacity);
-  printf("  \"Battery_voltage\":%.2f,\n", qpigs.battery_voltage);
-  printf("  \"Battery_charge_current\":%d,\n", qpigs.battery_charging_current);
-  printf("  \"Battery_discharge_current\":%d,\n", qpigs.battery_discharge_current);
-  printf("  \"Load_status_on\":%c,\n", qpigs.device_status[3]);
-  printf("  \"SCC_charge_on\":%c,\n", qpigs.device_status[6]);
-  printf("  \"AC_charge_on\":%c,\n", qpigs.device_status[7]);
+  printf("  \"Mode\":%s,\n", DeviceModeToString(mode).data());
+  printf("  \"Grid_voltage\":%.1f,\n", info.grid_voltage);
+  printf("  \"Grid_frequency\":%.1f,\n", info.grid_frequency);
+  printf("  \"AC_out_voltage\":%.1f,\n", info.ac_output_voltage);
+  printf("  \"AC_out_frequency\":%.1f,\n", info.ac_output_frequency);
+  printf("  \"PV_in_voltage\":%.1f,\n", info.pv_input_voltage);
+  printf("  \"PV_in_current\":%.1f,\n", pv_input_current);
+  printf("  \"PV_in_watts\":%d,\n", info.pv_input_power);
+  printf("  \"SCC_voltage\":%.4f,\n", info.battery_voltage_from_scc);
+  printf("  \"Load_pct\":%d,\n", info.output_load_percent);
+  printf("  \"Load_watt\":%d,\n", info.ac_output_active_power);
+  printf("  \"Load_va\":%d,\n", info.ac_output_apparent_power);
+  printf("  \"Bus_voltage\":%d,\n", (info.bus_voltage ? *info.bus_voltage : 0));
+  printf("  \"Heatsink_temperature\":%d,\n", info.inverter_heat_sink_temperature);
+  printf("  \"Battery_capacity\":%d,\n", info.battery_capacity);
+  printf("  \"Battery_voltage\":%.2f,\n", info.battery_voltage);
+  printf("  \"Battery_charge_current\":%d,\n", info.battery_charging_current);
+  printf("  \"Battery_discharge_current\":%d,\n", info.battery_discharge_current);
+  printf("  \"Load_status_on\":%c,\n", info.device_status[3]);
+  printf("  \"SCC_charge_on\":%c,\n", info.device_status[6]);
+  printf("  \"AC_charge_on\":%c,\n", info.device_status[7]);
   printf("  \"Battery_voltage_offset_for_fans_on\":%d,\n",
-         qpigs.battery_voltage_offset_for_fans_on);
-  printf("  \"Eeprom_version\":%d,\n", qpigs.eeprom_version);
-  printf("  \"PV_charging_power\":%d,\n", qpigs.pv_charging_power);
-  printf("  \"Charging_to_floating_mode\":%c,\n", qpigs.device_status_2[0]);
-  printf("  \"Switch_On\":%c,\n", qpigs.device_status_2[1]);
-  printf("  \"Dustproof_installed\":%c,\n", qpigs.device_status_2[2]);
-  printf("  \"Battery_recharge_voltage\":%.1f,\n", qpiri.battery_recharge_voltage);
-  printf("  \"Battery_under_voltage\":%.1f,\n", qpiri.battery_under_voltage);
-  printf("  \"Battery_bulk_voltage\":%.1f,\n", qpiri.battery_bulk_voltage);
-  printf("  \"Battery_float_voltage\":%.1f,\n", qpiri.battery_float_voltage);
-  printf("  \"Max_grid_charge_current\":%d,\n", qpiri.current_max_ac_charging_current);
-  printf("  \"Max_charge_current\":%d,\n", qpiri.current_max_charging_current);
-  printf("  \"Out_source_priority\":%d,\n", qpiri.output_source_priority);
-  printf("  \"Charger_source_priority\":%d,\n", qpiri.charger_source_priority);
-  printf("  \"Battery_redischarge_voltage\":%.1f,\n", qpiri.battery_redischarge_voltage);
-  printf("  \"Warnings\":\"%s\"\n", warnings.c_str());
+         info.battery_voltage_offset_for_fans_on);
+  printf("  \"Eeprom_version\":%d,\n", info.eeprom_version);
+  printf("  \"PV_charging_power\":%d,\n", info.pv_charging_power);
+  printf("  \"Charging_to_floating_mode\":%c,\n", info.device_status_2[0]);
+  printf("  \"Switch_On\":%c,\n", info.device_status_2[1]);
+  printf("  \"Dustproof_installed\":%c,\n", info.device_status_2[2]);
+  printf("  \"Battery_recharge_voltage\":%.1f,\n", rated_info.battery_recharge_voltage);
+  printf("  \"Battery_under_voltage\":%.1f,\n", rated_info.battery_under_voltage);
+  printf("  \"Battery_bulk_voltage\":%.1f,\n", rated_info.battery_bulk_voltage);
+  printf("  \"Battery_float_voltage\":%.1f,\n", rated_info.battery_float_voltage);
+  printf("  \"Max_grid_charge_current\":%d,\n", rated_info.current_max_ac_charging_current);
+  printf("  \"Max_charge_current\":%d,\n", rated_info.current_max_charging_current);
+  printf("  \"Out_source_priority\":%s,\n", OutputSourcePriorityToString(rated_info.output_source_priority).data());
+  printf("  \"Charger_source_priority\":%s,\n", ChargerPriorityToString(rated_info.charger_source_priority).data());
+  printf("  \"Battery_redischarge_voltage\":%.1f,\n", rated_info.battery_redischarge_voltage);
+  printf("  \"Warnings\":\"%s\"\n", ConcatenateWarnings(warnings).c_str());
   printf("}\n");
 }
 
@@ -128,23 +140,20 @@ int main(int argc, char* argv[]) {
   InitLogging(arguments);
 
   auto settings = LoadSettingsFromFile(GetConfigurationFileName(arguments));
-  Inverter inverter(settings.device_name);
+  SerialPort port(settings.device_name);
 
   // Logic to send 'raw commands' to the inverter.
   if (arguments.IsSet("-r")) {
-    const auto reply = inverter.Query(arguments.Get("-r"), false);
+    const auto reply = port.Query(arguments.Get("-r"), arguments.IsSet("--crc"));
     printf("Reply:  %s\n", reply.c_str());
     return 0;
   }
 
+  auto adapter = ProtocolAdapter::Get(settings.protocol, port);
   const bool run_once = arguments.IsSet("-1", "--run-once");
   while (true) {
-    if (inverter.Poll()) {
-      // The output is expected to be parsed by another tool.
-      PrintResultInJson(inverter, settings);
-    } else {
-      spdlog::error("Failed to retrieve all data from inverter.");
-    }
+    // The output is expected to be parsed by another tool.
+    PrintResultInJson(*adapter, settings);
 
     if (run_once) {
       break;

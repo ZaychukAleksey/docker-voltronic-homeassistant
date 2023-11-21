@@ -62,6 +62,8 @@ Settings LoadSettingsFromFile(const std::string& filename) {
     auto parameter_value = line.substr(delimiter + 1, std::string::npos - delimiter);
     if (parameter_name == "device") {
       result.device_name = parameter_value;
+    } else if (parameter_name == "protocol") {
+      result.protocol = ProtocolFromString(parameter_value);
     } else if (parameter_name == "amperage_factor") {
       result.amperage_factor = ToFloat(parameter_name, parameter_value);
     } else if (parameter_name == "watt_factor") {

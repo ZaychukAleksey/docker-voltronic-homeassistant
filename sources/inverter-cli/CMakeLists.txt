@@ -16,7 +16,11 @@ target_sources(inverter_poller
   main.cpp
 
   configuration.cpp
-  inverter.cpp
   utils.cpp
+  serial_port.cpp
+  protocols/protocol.cpp
+  protocols/protocol_adapter.cpp
+  protocols/pi18_protocol_adapter.cpp
+  protocols/pi30_protocol_adapter.cpp
 )
 target_link_libraries(inverter_poller PRIVATE spdlog::spdlog)
