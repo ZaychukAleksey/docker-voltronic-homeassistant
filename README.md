@@ -1,29 +1,32 @@
-This is a fork from ned-kelly version with improved changes from  kchiem, dilyanpalauzov, nrm21 and many more:
-- no more needed fixes responses for QMOD, QPIRI... program it will find them.
-- changes regarding mqtt broker compatibility, topics, auto-discovery...
-- polling/transmit rate speed improved. now it transmit to HA almost every 10 seconds.
-- now you can transmit commands to inverter bigger then 5 characters by sending them in batch of 5 characters .
-- Battery redicharge voltage - now show good values.
-- many changes witch I don't remember :)
+This is a fork from [catalinbordan](https://github.com/catalinbordan/docker-voltronic-homeassistant) version (which, in turn, derives from [ned-kelly](https://github.com/ned-kelly/docker-voltronic-homeassistant) project). Please, check the origins for details.
 
-**The instructions to use this fork are at the end of readme and I have taking in consideration that you allready have installed and followed the intructions of original repository of ned-kelly. If you start from zero, then install docker and docker-compose and then skip to no 5.**
+The following changes were made:
+- Code simplified and rewritten on C++20 using [Google Style](https://google.github.io/styleguide/cppguide.html).
+- Implemented PI18 protocol.
+- Enhancements in logging and error-handling.
+- Reduce the size of docker image.
 
-This is a fork for my personal use, like other 85 forks, witch I combine all the changes I found to be useful and I could understand(no programming skills). 
-Manny thanks for this people, and I am glad if is it is useful for others because I have spent a lot of time to study the changes. If it is not working for you, be sure you inverter it is working with protocol PI30 and have a good connection with inverter. If you find something bad/need to be improved and you know why/how to do, I will haply change it when I will find free time. 
+<b>This is still WORK-IN-PROGRESS. What doesn't work at the moment:</b>
 
-==========================
+- PI30 protocol doesn't work.
+- Integration with HomeAssistant :D.
+
+Further plans:
+
+- (soon) Fix integration with HomeAssistant.
+- (soon) Make PI30 protocol work again.
+- Add support for PI17 protocol.
+- Fix Multi-Arch builds.
+- Make integration with HomeAssistant interactive (i.e. be able to change inverter parameters from HomeAssistant in human-readable manner).
+- Implement protocol autodetection.
+
+---
+
 # A Docker based Home Assistant interface for MPP/Voltronic Solar Inverters 
 
 **Docker Hub:** [`bushrangers/ha-voltronic-mqtt:latest`](https://hub.docker.com/r/bushrangers/ha-voltronic-mqtt/)
 
 ![License](https://img.shields.io/github/license/ned-kelly/docker-voltronic-homeassistant.svg) ![Docker Pulls](https://img.shields.io/docker/pulls/bushrangers/ha-voltronic-mqtt.png) ![buildx](https://github.com/ned-kelly/docker-voltronic-homeassistant/workflows/buildx/badge.svg)
-
-----
-
-The following other projects may also run on the same SBC _(using the same style docker setup as this)_, to give you a fully featured solution with other sensors and devices:
-
- - [EPEver MPPT Stats (MQTT, Docker Image)](https://github.com/ned-kelly/docker-epever-homeassistant)
- - [LeChacal.com's CT Clamp Current/Energy Monitors for your Breaker Box](https://github.com/ned-kelly/docker-lechacal-homeassistant)
 
 ---
 
@@ -43,16 +46,15 @@ By remotely setting values via MQTT you can implement many more complex forms of
 
 The program is designed to be run in a Docker Container, and can be deployed on a lightweight SBC next to your Inverter (i.e. an Orange Pi Zero running Arabian), and read data via the RS232 or USB ports on the back of the Inverter.
 
-![Example Lovelace Dashboard](images/lovelace-dashboard.jpg "Example Lovelace Dashboard")
+![Example Lovelace Dashboard](https://github.com/ned-kelly/docker-voltronic-homeassistant/raw/master/images/lovelace-dashboard.jpg "Example Lovelace Dashboard")
 _Example #1: My "Lovelace" dashboard using data collected from the Inverter & the ability to change modes/configuration via MQTT._
 
-![Example Lovelace Dashboard](images/grafana-example.jpg "Example Grafana Dashboard")
+![Example Lovelace Dashboard](https://github.com/ned-kelly/docker-voltronic-homeassistant/raw/master/images/grafana-example.jpg "Example Grafana Dashboard")
 _Example #2: Grafana summary allowing more detailed analysis of data collected, and the ability to 'deep-dive' historical data._
 
 
 ## Prerequisites
 
-- Docker
 - Docker-compose
 - [Voltronic/Axpert/MPPSolar](https://www.ebay.com.au/sch/i.html?_from=R40&_trksid=p2334524.m570.l1313.TR11.TRC1.A0.H0.Xaxpert+inverter.TRS0&_nkw=axpert+inverter&_sacat=0&LH_TitleDesc=0&LH_PrefLoc=2&_osacat=0&_odkw=solar+inverter&LH_TitleDesc=0) based inverter that you want to monitor
 - Home Assistant [running with a MQTT Server](https://www.home-assistant.io/components/mqtt/)
@@ -64,23 +66,22 @@ It's pretty straightforward, just clone down the sources and set the configurati
 
 ```bash
 # Clone down sources on the host you want to monitor...
-git clone https://github.com/ned-kelly/docker-voltronic-homeassistant.git /opt/ha-inverter-mqtt-agent
+git clone https://github.com/ZaychukAleksey/docker-voltronic-homeassistant.git /opt/ha-inverter-mqtt-agent
 cd /opt/ha-inverter-mqtt-agent
 
-# Configure the 'device=' directive (in inverter.conf) to suit for RS232 or USB.. 
-vi config/inverter.conf
+# Configure inverter connection. See descriptions in inverter.conf.
+nano config/inverter.conf
 
-# Configure your MQTT server's IP/Host Name, Port, Credentials, HA topic, and name of the Inverter that you want displayed in Home Assistant...
+# Configure your MQTT server's IP/Host Name, Port, Credentials, HA discovery_prefix, and name of the
+# Inverter that you want displayed in Home Assistant...
 # If your MQTT server does not need a username/password just leave these values empty.
-
-vi config/mqtt.json
+nano config/mqtt.json
 ```
 
 Then, plug in your Serial or USB cable to the Inverter & stand up the container:
 
 ```bash
 docker-compose up -d
-
 ```
 
 _**Note:**_
