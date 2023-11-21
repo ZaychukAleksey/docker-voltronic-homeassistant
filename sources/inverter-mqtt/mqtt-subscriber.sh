@@ -1,25 +1,30 @@
 #!/bin/bash
 
-MQTT_SERVER=`cat /etc/inverter/mqtt.json | jq '.server' -r`
-MQTT_PORT=`cat /etc/inverter/mqtt.json | jq '.port' -r`
-MQTT_TOPIC=`cat /etc/inverter/mqtt.json | jq '.topic' -r`
-MQTT_DEVICENAME=`cat /etc/inverter/mqtt.json | jq '.devicename' -r`
-MQTT_SERIAL=`cat /etc/inverter/mqtt.json | jq '.serial' -r`
-MQTT_USERNAME=`cat /etc/inverter/mqtt.json | jq '.username' -r`
-MQTT_PASSWORD=`cat /etc/inverter/mqtt.json | jq '.password' -r`
+# The script subscribes on COMMANDS topic and listens for commands sent from HomeAssistant.
+# Then resends them to inverter_poller
+
+CONFIG_FILE="/opt/mqtt.json"
+MQTT_SERVER=`cat $CONFIG_FILE | jq '.server' -r`
+MQTT_PORT=`cat $CONFIG_FILE | jq '.port' -r`
+MQTT_DISCOVERY_PREFIX=`cat $CONFIG_FILE | jq '.discovery_prefix' -r`
+MQTT_DEVICE_NAME=`cat $CONFIG_FILE | jq '.device_name' -r`
+MQTT_SERIAL_NUMBER=`cat $CONFIG_FILE | jq '.serial_number' -r`
+MQTT_USERNAME=`cat $CONFIG_FILE | jq '.username' -r`
+MQTT_PASSWORD=`cat $CONFIG_FILE | jq '.password' -r`
 
 function subscribe () {
-    mosquitto_sub -h $MQTT_SERVER -p $MQTT_PORT -u "$MQTT_USERNAME" -P "$MQTT_PASSWORD" -i ""$MQTT_DEVICENAME"_"$MQTT_SERIAL"" -t "$MQTT_TOPIC/sensor/""$MQTT_DEVICENAME"_"$MQTT_SERIAL""/COMMANDS" -q 1
+    mosquitto_sub -h $MQTT_SERVER -p $MQTT_PORT -u "$MQTT_USERNAME" -P "$MQTT_PASSWORD" \
+    -i ""$MQTT_DEVICE_NAME"_"$MQTT_SERIAL_NUMBER"" -t "$MQTT_DISCOVERY_PREFIX/sensor/""$MQTT_DEVICE_NAME"_"$MQTT_SERIAL_NUMBER""/COMMANDS" -q 1
 }
 
 function reply () {
-    mosquitto_pub -h $MQTT_SERVER -p $MQTT_PORT -u "$MQTT_USERNAME" -P "$MQTT_PASSWORD" -i ""$MQTT_DEVICENAME"_"$MQTT_SERIAL"" -t "$MQTT_TOPIC/sensor/""$MQTT_DEVICENAME"_"$MQTT_SERIAL""/COMMANDS" -q 1 -m "$*"
+    mosquitto_pub -h $MQTT_SERVER -p $MQTT_PORT -u "$MQTT_USERNAME" -P "$MQTT_PASSWORD" -i ""$MQTT_DEVICE_NAME"_"$MQTT_SERIAL_NUMBER"" -t "$MQTT_DISCOVERY_PREFIX/sensor/""$MQTT_DEVICE_NAME"_"$MQTT_SERIAL_NUMBER""/COMMANDS" -q 1 -m "$*"
 }
 
 subscribe | while read rawcmd; do
     echo "[$(date +%F+%T)] Incoming request send: [$rawcmd] to inverter."
     for attempt in $(seq 3); do
-	REPLY=$(/opt/inverter-cli/bin/inverter_poller -r $rawcmd)
+	REPLY=$(/opt/inverter_poller -r $rawcmd)
 	echo "[$(date +%F+%T)] $REPLY"
         reply "[$rawcmd] [Attempt $attempt] [$REPLY]"
 	[ "$REPLY" = "Reply:  ACK" ] && break
@@ -32,4 +37,4 @@ done
 # do
 #     echo "Incoming request send: [$rawcmd] to inverter."
 #     /opt/inverter-cli/bin/inverter_poller -r $rawcmd;
-# done < <(mosquitto_sub -h $MQTT_SERVER -p $MQTT_PORT -u "$MQTT_USERNAME" -P "$MQTT_PASSWORD" -i ""$MQTT_DEVICENAME"_"$MQTT_SERIAL"" -t "$MQTT_TOPIC/sensor/""$MQTT_DEVICENAME"_"$MQTT_SERIAL""/COMMANDS" -q 1)
+# done < <(mosquitto_sub -h $MQTT_SERVER -p $MQTT_PORT -u "$MQTT_USERNAME" -P "$MQTT_PASSWORD" -i ""$MQTT_DEVICE_NAME"_"$MQTT_SERIAL_NUMBER"" -t "$MQTT_DISCOVERY_PREFIX/sensor/""$MQTT_DEVICE_NAME"_"$MQTT_SERIAL_NUMBER""/COMMANDS" -q 1)
