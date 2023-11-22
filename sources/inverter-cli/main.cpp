@@ -61,16 +61,16 @@ void PrintResultInJson(ProtocolAdapter& adapter, const Settings& settings) {
   // load_watthour = (float)load_watt / (3600000 / runinterval);
 
   auto mode = adapter.GetMode();
-  auto rated_info = adapter.GetRatedInformation();
+  auto rated_info = adapter.GetRatedInfo();
+  auto status = adapter.GetStatusInfo();
   auto warnings = adapter.GetWarnings();
-  auto info = adapter.GetGeneralInfo();
 
   // There appears to be a discrepancy in actual DMM measured current vs what the meter is
   // telling me it's getting, so lets add a variable we can multiply/divide by to adjust if
   // needed.  This should be set in the config so it can be changed without program recompile.
-  auto pv_input_current = info.pv_input_voltage > 0
-                          ? info.pv_input_power / info.pv_input_voltage
-                          : 0.f;
+//  auto pv_input_current = info.pv_input_voltage > 0
+//                          ? info.pv_input_power / info.pv_input_voltage
+//                          : 0.f;
 //  const auto pv_input_current = info.pv_input_current * settings.amperage_factor;
 
   // It appears on further inspection of the documentation, that the input current is actually
@@ -79,43 +79,54 @@ void PrintResultInJson(ProtocolAdapter& adapter, const Settings& settings) {
 //  const auto pv_input_watts = (info.battery_voltage_from_scc * pv_input_current) * settings.watt_factor;
 
   printf("{\n");
-  printf("  \"Mode\":%s,\n", DeviceModeToString(mode).data());
-  printf("  \"Grid_voltage\":%.1f,\n", info.grid_voltage);
-  printf("  \"Grid_frequency\":%.1f,\n", info.grid_frequency);
-  printf("  \"AC_out_voltage\":%.1f,\n", info.ac_output_voltage);
-  printf("  \"AC_out_frequency\":%.1f,\n", info.ac_output_frequency);
-  printf("  \"PV_in_voltage\":%.1f,\n", info.pv_input_voltage);
-  printf("  \"PV_in_current\":%.1f,\n", pv_input_current);
-  printf("  \"PV_in_watts\":%d,\n", info.pv_input_power);
-  printf("  \"SCC_voltage\":%.4f,\n", info.battery_voltage_from_scc);
-  printf("  \"Load_pct\":%d,\n", info.output_load_percent);
-  printf("  \"Load_watt\":%d,\n", info.ac_output_active_power);
-  printf("  \"Load_va\":%d,\n", info.ac_output_apparent_power);
-  printf("  \"Bus_voltage\":%d,\n", (info.bus_voltage ? *info.bus_voltage : 0));
-  printf("  \"Heatsink_temperature\":%d,\n", info.inverter_heat_sink_temperature);
-  printf("  \"Battery_capacity\":%d,\n", info.battery_capacity);
-  printf("  \"Battery_voltage\":%.2f,\n", info.battery_voltage);
-  printf("  \"Battery_charge_current\":%d,\n", info.battery_charging_current);
-  printf("  \"Battery_discharge_current\":%d,\n", info.battery_discharge_current);
-  printf("  \"Load_status_on\":%c,\n", info.device_status[3]);
-  printf("  \"SCC_charge_on\":%c,\n", info.device_status[6]);
-  printf("  \"AC_charge_on\":%c,\n", info.device_status[7]);
-  printf("  \"Battery_voltage_offset_for_fans_on\":%d,\n",
-         info.battery_voltage_offset_for_fans_on);
-  printf("  \"Eeprom_version\":%d,\n", info.eeprom_version);
-  printf("  \"PV_charging_power\":%d,\n", info.pv_charging_power);
-  printf("  \"Charging_to_floating_mode\":%c,\n", info.device_status_2[0]);
-  printf("  \"Switch_On\":%c,\n", info.device_status_2[1]);
-  printf("  \"Dustproof_installed\":%c,\n", info.device_status_2[2]);
-  printf("  \"Battery_recharge_voltage\":%.1f,\n", rated_info.battery_recharge_voltage);
+
+  // Info about grid.
+  printf("  \"Grid_voltage\":%.1f,\n", status.grid_voltage);
+  printf("  \"Grid_frequency\":%.1f,\n", status.grid_frequency);
+
+  // Info about the output.
+  printf("  \"Output_voltage\":%.1f,\n", status.ac_output_voltage);
+  printf("  \"Output_frequency\":%.1f,\n", status.ac_output_frequency);
+  printf("  \"Output_apparent_power\":%d,\n", status.ac_output_apparent_power);
+  printf("  \"Output_active_power\":%d,\n", status.ac_output_active_power);
+  printf("  \"Output_load_percent\":%d,\n", status.output_load_percent);
+
+  // Info about batteries
+  printf("  \"Battery_type\":\"%s\",\n", BatteryTypeToString(rated_info.battery_type).data());
+  printf("  \"Battery_capacity\":%d,\n", status.battery_capacity);
+  printf("  \"Battery_voltage\":%.2f,\n", status.battery_voltage);
+  printf("  \"Battery_voltage_from_SCC\":%.4f,\n", status.battery_voltage_from_scc);
+  printf("  \"Battery_voltage_from_SCC2\":%.4f,\n", status.battery_voltage_from_scc2);
+  printf("  \"Battery_discharge_current\":%d,\n", status.battery_discharge_current);
+  printf("  \"Battery_charge_current\":%d,\n", status.battery_charging_current);
+
+  printf("  \"Battery_nominal_voltage\":%.1f,\n", rated_info.battery_nominal_voltage);
   printf("  \"Battery_under_voltage\":%.1f,\n", rated_info.battery_under_voltage);
-  printf("  \"Battery_bulk_voltage\":%.1f,\n", rated_info.battery_bulk_voltage);
   printf("  \"Battery_float_voltage\":%.1f,\n", rated_info.battery_float_voltage);
-  printf("  \"Max_grid_charge_current\":%d,\n", rated_info.current_max_ac_charging_current);
-  printf("  \"Max_charge_current\":%d,\n", rated_info.current_max_charging_current);
-  printf("  \"Out_source_priority\":%s,\n", OutputSourcePriorityToString(rated_info.output_source_priority).data());
-  printf("  \"Charger_source_priority\":%s,\n", ChargerPriorityToString(rated_info.charger_source_priority).data());
-  printf("  \"Battery_redischarge_voltage\":%.1f,\n", rated_info.battery_redischarge_voltage);
+  printf("  \"Battery_bulk_voltage\":%.1f,\n", rated_info.battery_bulk_voltage);
+  printf("  \"Battery_stop_discharging_voltage_with_grid\":%.1f,\n", rated_info.battery_stop_discharging_voltage_with_grid);
+  printf("  \"Battery_stop_charging_voltage_with_grid\":%.1f,\n", rated_info.battery_stop_charging_voltage_with_grid);
+
+  // PV (Photovoltaics, i.e. solar panels) data.
+  printf("  \"PV_watts\":%d,\n", status.pv_input_power);
+  printf("  \"PV2_watts\":%d,\n", status.pv2_input_power);
+  printf("  \"PV_voltage\":%.1f,\n", status.pv_input_voltage);
+  printf("  \"PV2_voltage\":%.1f,\n", status.pv2_input_voltage);
+  printf("  \"PV_bus_voltage\":%d,\n", status.pv_bus_voltage);
+
+  // Mode & status & priorities
+  printf("  \"Mode\":\"%s\",\n", DeviceModeToString(mode).data());
+  printf("  \"Out_source_priority\":\"%s\",\n", OutputSourcePriorityToString(rated_info.output_source_priority).data());
+  printf("  \"Charger_source_priority\":\"%s\",\n", ChargerPriorityToString(rated_info.charger_source_priority).data());
+
+  // Various info.
+  printf("  \"Heatsink_temperature\":%d,\n", status.inverter_heat_sink_temperature);
+  printf("  \"Mptt1_charger_temperature\":%d,\n", status.mptt1_charger_temperature);
+  printf("  \"Mptt2_charger_temperature\":%d,\n", status.mptt2_charger_temperature);
+//  printf("  \"Load_status_on\":%c,\n", info.device_status[3]);
+//  printf("  \"SCC_charge_on\":%c,\n", info.device_status[6]);
+//  printf("  \"AC_charge_on\":%c,\n", info.device_status[7]);
+//  printf("  \"PV_charging_power\":%d,\n", info.pv_charging_power);
   printf("  \"Warnings\":\"%s\"\n", ConcatenateWarnings(warnings).c_str());
   printf("}\n");
 }

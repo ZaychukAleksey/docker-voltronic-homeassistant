@@ -8,9 +8,10 @@ class Pi30ProtocolAdapter : public ProtocolAdapter {
   explicit Pi30ProtocolAdapter(const SerialPort& port) : ProtocolAdapter(port) {}
 
   DeviceMode GetMode() override;
-  GeneralInfo GetGeneralInfo() override;
-  RatedInformation GetRatedInformation() override;
   std::vector<std::string> GetWarnings() override;
+
+  StatusInfo GetStatusInfo() override;
+  RatedInformation GetRatedInfo() override;
 
  protected:
   bool UseCrcInQueries() override { return true; }

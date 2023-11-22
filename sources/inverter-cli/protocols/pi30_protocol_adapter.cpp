@@ -35,7 +35,7 @@ DeviceMode Pi30ProtocolAdapter::GetMode() {
   throw std::runtime_error(fmt::format("Unknown device mode: {}", mode));
 }
 
-RatedInformation Pi30ProtocolAdapter::GetRatedInformation() {
+RatedInformation Pi30ProtocolAdapter::GetRatedInfo() {
   throw std::runtime_error("Not implemented");
 }
 
@@ -43,6 +43,6 @@ std::vector<std::string> Pi30ProtocolAdapter::GetWarnings() {
   throw std::runtime_error("Not implemented");
 }
 
-GeneralInfo Pi30ProtocolAdapter::GetGeneralInfo() {
+StatusInfo Pi30ProtocolAdapter::GetStatusInfo() {
   throw std::runtime_error("Not implemented");
 }

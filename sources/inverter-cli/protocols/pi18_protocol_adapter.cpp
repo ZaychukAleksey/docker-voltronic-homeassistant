@@ -93,7 +93,7 @@ DeviceMode Pi18ProtocolAdapter::GetMode() {
   throw std::runtime_error(fmt::format("Unknown device mode: {}", mode));
 }
 
-RatedInformation Pi18ProtocolAdapter::GetRatedInformation() {
+RatedInformation Pi18ProtocolAdapter::GetRatedInfo() {
   // Special case. According to the protocol, the length is 85. But my inverter returns 89.
   // Therefore I can't check it as a prefix and have to skip it here.
   auto response = GetRatedInformationRaw().substr(2);
@@ -120,15 +120,16 @@ RatedInformation Pi18ProtocolAdapter::GetRatedInformation() {
   result.ac_output_rating_current = data[4] / 10.f;
   result.ac_output_rating_apparent_power = data[5];
   result.ac_output_rating_active_power = data[6];
-  result.battery_rating_voltage = data[7] / 10.f;
-  result.battery_recharge_voltage = data[8] / 10.f;
-  result.battery_redischarge_voltage = data[9] / 10.f;
+  result.battery_nominal_voltage = data[7] / 10.f;
+  result.battery_stop_discharging_voltage_with_grid = data[8] / 10.f;  // battery_recharge_voltage
+  result.battery_stop_charging_voltage_with_grid = data[9] / 10.f; // redischarge_voltage
+
   result.battery_under_voltage = data[10] / 10.f;
   result.battery_bulk_voltage = data[11] / 10.f;
   result.battery_float_voltage = data[12] / 10.f;
   result.battery_type = GetBatteryType(data[13]);
-  result.current_max_ac_charging_current = data[14];
-  result.current_max_charging_current = data[15];
+  result.max_ac_charging_current = data[14];
+  result.max_charging_current = data[15];
   result.input_voltage_range = GetInputVoltageRange(data[16]);
   result.output_source_priority = GetOutputSourcePriority(data[17]);
   result.charger_source_priority = ChargerPriority(data[18]);
@@ -217,7 +218,7 @@ std::vector<std::string> Pi18ProtocolAdapter::GetWarnings() {
   return result;
 }
 
-GeneralInfo Pi18ProtocolAdapter::GetGeneralInfo() {
+StatusInfo Pi18ProtocolAdapter::GetStatusInfo() {
   auto str = GetGeneralStatusRaw();
 
   // Response according to the protocol:
@@ -232,7 +233,7 @@ GeneralInfo Pi18ProtocolAdapter::GetGeneralInfo() {
   if (n_args < std::size(data)) {
     throw std::runtime_error("Unexpected data in GetGeneralInfo: " + str);
   }
-  GeneralInfo result;
+  StatusInfo result;
   result.grid_voltage = data[0] / 10.f;
   result.grid_frequency = data[1] / 10.f;
   result.ac_output_voltage = data[2] / 10.f;
@@ -254,5 +255,13 @@ GeneralInfo Pi18ProtocolAdapter::GetGeneralInfo() {
   result.pv2_input_power = data[17];
   result.pv_input_voltage = data[18] / 10.f;
   result.pv2_input_voltage = data[19] / 10.f;
+  // data[20] - Setting value configuration state (0: Nothing changed, 1: Something changed)
+  // data[21] - MPPT1 charger status (0: abnormal, 1: normal but not charged, 2: charging)
+  // data[22] - MPPT2 charger status (0: abnormal, 1: normal but not charged, 2: charging)
+  // data[23] - Load connection (0: disconnect, 1: connect)
+  // data[24] - Battery power direction (0: donothing, 1: charge, 2: discharge)
+  // data[25] - DC/AC power direction (0: donothing, 1: AC-DC, 2: DC-AC)
+  // data[26] - Line power direction (0: donothing, 1: input, 2: output)
+  // data[27] - Local parallel ID (a: 0~(parallel number - 1))
   return result;
 }

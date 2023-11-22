@@ -17,9 +17,11 @@ class ProtocolAdapter {
   static std::unique_ptr<ProtocolAdapter> Get(Protocol, const SerialPort&);
 
   [[nodiscard]] virtual DeviceMode GetMode() = 0;
-  [[nodiscard]] virtual GeneralInfo GetGeneralInfo() = 0;
-  [[nodiscard]] virtual RatedInformation GetRatedInformation() = 0;
   [[nodiscard]] virtual std::vector<std::string> GetWarnings() = 0;
+
+  /// @see descriptions for StatusInfo and RatedInformation.
+  [[nodiscard]] virtual StatusInfo GetStatusInfo() = 0;
+  [[nodiscard]] virtual RatedInformation GetRatedInfo() = 0;
 
  protected:
   ProtocolAdapter(SerialPort&&) = delete;
