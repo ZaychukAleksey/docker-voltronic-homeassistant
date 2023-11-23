@@ -10,7 +10,6 @@ FROM debian:bullseye-slim
 
 # Copy files.
 COPY sources/ /opt/
-COPY config/ /opt/
 
 RUN \
     # Install required packages.

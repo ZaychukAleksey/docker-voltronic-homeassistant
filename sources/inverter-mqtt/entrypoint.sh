@@ -1,6 +1,6 @@
 #!/bin/bash
 
-CONFIG_FILE="/opt/mqtt.json"
+CONFIG_FILE="/opt/config/mqtt.json"
 INVERTER_POLLER_BINARY="/opt/inverter_poller"
 
 # stdbuf - Run COMMAND, with modified buffering operations for its standard streams.

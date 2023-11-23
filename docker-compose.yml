@@ -18,14 +18,14 @@ services:
 
     # Give extended privileges to this container. That allows us to access USB or serial ports.
     # https://docs.docker.com/engine/reference/run/#runtime-privilege-and-linux-capabilities
-    privileged: true
+#    privileged: true
 
     # https://docs.docker.com/config/containers/start-containers-automatically/#use-a-restart-policy
     restart: always
 
     # Mount "config" directory to the container so it will be accessible by inverter_poller.
     volumes:
-      - ./config/:/etc/inverter/
+      - ./config/:/opt/config
 
   # Used to auto-update images as we release new versions...
   #watchtower:

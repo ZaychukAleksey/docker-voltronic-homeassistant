@@ -42,7 +42,7 @@ void PrintHelp() {
 }
 
 const std::string& GetConfigurationFileName(const CommandLineArguments& cmd_args) {
-  static const std::string kConfigurationFile = "./inverter.conf";
+  static const std::string kConfigurationFile = "config/inverter.conf";
   return cmd_args.IsSet("-c") ? cmd_args.Get("-c") : kConfigurationFile;
 }
 
