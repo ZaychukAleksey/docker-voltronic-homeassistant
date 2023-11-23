@@ -81,7 +81,8 @@ nano config/mqtt.json
 Then, plug in your Serial or USB cable to the Inverter & stand up the container:
 
 ```bash
-docker-compose up -d
+# Detached mode: Run containers in the background
+docker-compose up --detach
 ```
 
 _**Note:**_
@@ -178,7 +179,7 @@ When you will use this fork you need to do the following commands on your device
 7) sudo nano config/inverter.conf (only edit this file if you don't have usb cable to inverter)
 8) sudo nano config/mqtt.json (change it with your variables)
 9) sudo docker-compose build
-10) sudo docker-compose up -d
+10) sudo docker-compose up --detach
 11) sudo docker exec -it voltronic-mqtt bash -c '/opt/inverter-cli/bin/inverter_poller -d -1' (this is to test to see is everything ok regarding connection between inverter and docker)
 
 this is the output result of my inverter:

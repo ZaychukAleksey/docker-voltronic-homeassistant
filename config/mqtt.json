@@ -1,5 +1,5 @@
 {
-    "mqtt_server": "192.168.0.55",
+    "mqtt_server": "192.168.1.55",
     "mqtt_port": "1883",
     "mqtt_discovery_prefix": "homeassistant",
     "mqtt_username": "mqtt",

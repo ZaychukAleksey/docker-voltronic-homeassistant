@@ -1,5 +1,13 @@
 FROM debian:bullseye-slim
 
+# To build this image:
+# docker build -t voltronic --file Dockerfile.dev .
+#
+# To rebuild from scratch:
+# docker image rm ...
+# docker builder prune --all
+# docker build -t voltronic --file Dockerfile.dev .
+
 # Copy files.
 COPY sources/ /opt/
 COPY config/ /opt/
