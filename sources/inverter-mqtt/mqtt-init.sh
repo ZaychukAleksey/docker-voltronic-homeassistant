@@ -1,170 +1,159 @@
 #!/bin/bash
 #
-# Simple script to register the MQTT topics when the container starts for the first time...
+# Script for registering the MQTT topics when the container starts for the first time.
+# For details, see the list of supported integrations here:
+#     https://www.home-assistant.io/integrations/mqtt/#mqtt-discovery
+#
+CONFIG_FILE="$1"
 
-CONFIG_FILE="/opt/mqtt.json"
-MQTT_SERVER=`cat $CONFIG_FILE | jq '.server' -r`
-MQTT_PORT=`cat $CONFIG_FILE | jq '.port' -r`
-MQTT_DISCOVERY_PREFIX=`cat $CONFIG_FILE | jq '.discovery_prefix' -r`
-MQTT_DEVICE_NAME=`cat $CONFIG_FILE | jq '.device_name' -r`
-MQTT_MANUFACTURER=`cat $CONFIG_FILE | jq '.manufacturer' -r`
-MQTT_MODEL=`cat $CONFIG_FILE | jq '.model' -r`
-MQTT_SERIAL_NUMBER=`cat $CONFIG_FILE | jq '.serial_number' -r`
-MQTT_VER=`cat $CONFIG_FILE | jq '.ver' -r`
-MQTT_USERNAME=`cat $CONFIG_FILE | jq '.username' -r`
-MQTT_PASSWORD=`cat $CONFIG_FILE | jq '.password' -r`
+MQTT_SERVER=`cat "$CONFIG_FILE" | jq '.mqtt_server' -r` || exit 1
+MQTT_PORT=`cat "$CONFIG_FILE" | jq '.mqtt_port' -r`
+MQTT_USERNAME=`cat "$CONFIG_FILE" | jq '.mqtt_username' -r`
+MQTT_PASSWORD=`cat "$CONFIG_FILE" | jq '.mqtt_password' -r`
+MQTT_DISCOVERY_PREFIX=`cat "$CONFIG_FILE" | jq '.mqtt_discovery_prefix' -r`
 
-DEVICE_ID="$MQTT_DEVICE_NAME""_$MQTT_SERIAL_NUMBER"
+DEVICE_NAME=`cat "$CONFIG_FILE" | jq '.device_name' -r`
+DEVICE_MANUFACTURER=`cat "$CONFIG_FILE" | jq '.device_manufacturer' -r`
+DEVICE_MODEL=`cat "$CONFIG_FILE" | jq '.device_model' -r`
+DEVICE_SERIAL_NUMBER=`cat "$CONFIG_FILE" | jq '.device_serial_number' -r`
+DEVICE_ID="$DEVICE_NAME""_$DEVICE_SERIAL_NUMBER"
+DEVICE_INFO_JSON="{\"ids\":\"$DEVICE_SERIAL_NUMBER\",\"mf\":\"$DEVICE_MANUFACTURER\",\"mdl\":\"$DEVICE_MODEL\",\"name\":\"$DEVICE_NAME\"}"
+
 
 registerControl() {
-  CONTROL="$1"
-  PAYLOAD="$2"
+  COMPONENT_TYPE="$1"
+  CONTROL="$2"
+  PAYLOAD="$3"
 
   # The structure of MQTT discovery topic: <discovery_prefix>/<component>/[<device>/]<control>/config
-  TOPIC="$MQTT_DISCOVERY_PREFIX/sensor/$DEVICE_ID/$CONTROL/config"
+  # For example: homeassistant/sensor/invertor_sn_64234579/Grid_voltage/config
+  # https://www.home-assistant.io/integrations/mqtt/#discovery-topic
+  DISCOVERY_TOPIC="$MQTT_DISCOVERY_PREFIX/$COMPONENT_TYPE/$DEVICE_ID/$CONTROL/config"
+
+  echo -e "\nDISCOVERY_TOPIC=$DISCOVERY_TOPIC"
+  echo "PAYLOAD=$PAYLOAD"
 
   mosquitto_pub -h $MQTT_SERVER -p $MQTT_PORT -u "$MQTT_USERNAME" -P "$MQTT_PASSWORD" \
         --id "$DEVICE_ID" \
-        --topic "$TOPIC" \
+        --topic "$DISCOVERY_TOPIC" \
         --retain \
         --message "$PAYLOAD"
 }
 
-registerTopic() {
+# https://www.home-assistant.io/integrations/binary_sensor.mqtt/
+registerBinarySensor() {
   CONTROL="$1"
-  UNIT_OF_MEASURE="$2"
-  MDI_ICON="$3"
-  DEVICE_CLASS="$4"
+  DEVICE_CLASS="$2" # One of https://www.home-assistant.io/integrations/binary_sensor/#device-class
 
   CONTROL_NAME=`echo "$CONTROL" | tr _ " "` # Replace underscores "_" with whitespaces.
 
-  # See the list of integrations here: https://www.home-assistant.io/integrations/mqtt/#mqtt-discovery
   PAYLOAD="{
+  \"device\": $DEVICE_INFO_JSON,
   \"name\": \"$CONTROL_NAME\",
-  \"unique_id\": \""$MQTT_SERIAL_NUMBER"_$CONTROL\",
-  \"device\": { \"ids\": \""$MQTT_SERIAL_NUMBER"\",
-                \"mf\": \""$MQTT_MANUFACTURER"\",
-                \"mdl\": \""$MQTT_MODEL"\",
-                \"name\": \""$MQTT_DEVICE_NAME"\",
-                \"sw\": \""$MQTT_VER"\"},
-  \"state_topic\": \""$MQTT_DISCOVERY_PREFIX"/sensor/"$MQTT_DEVICE_NAME"_"$MQTT_SERIAL_NUMBER"/$CONTROL\",
-  \"state_class\": \"measurement\",
   \"device_class\": \"$DEVICE_CLASS\",
-  \"unit_of_measurement\": \"$UNIT_OF_MEASURE\",
-  \"icon\": \"mdi:$MDI_ICON\"}"
+  \"payload_off\":0,
+  \"payload_on\":1,
+  \"state_topic\": \""$MQTT_DISCOVERY_PREFIX"/binary_sensor/$DEVICE_ID/$CONTROL\",
+  \"unique_id\": \""$DEVICE_SERIAL_NUMBER"_$CONTROL\"}"
 
-  registerControl $CONTROL $PAYLOAD
+  registerControl "binary_sensor" "$CONTROL" "$PAYLOAD"
 }
 
-# Remove the energy topic because they are not good for HA. Device class:total increasing or total it will add in statistics the differences between states, and we need to make sum of states. Best cases it is useful for influxdb.
-# registerEnergyTopic () {
-#     mosquitto_pub \
-#         -h $MQTT_SERVER \
-#         -p $MQTT_PORT \
-#         -u "$MQTT_USERNAME" \
-#         -P "$MQTT_PASSWORD" \
-#         -i ""$MQTT_DEVICE_NAME"_"$MQTT_SERIAL_NUMBER"" \
-#         -t "$MQTT_DISCOVERY_PREFIX/sensor/"$MQTT_DEVICE_NAME"_"$MQTT_SERIAL_NUMBER"/$1/LastReset" \
-#         -r \
-#         -m "1970-01-01T00:00:00+00:00"
-
-#     mosquitto_pub \
-#         -h $MQTT_SERVER \
-#         -p $MQTT_PORT \
-#         -u "$MQTT_USERNAME" \
-#         -P "$MQTT_PASSWORD" \
-#         -i ""$MQTT_DEVICE_NAME"_"$MQTT_SERIAL_NUMBER"" \
-#         -t ""$MQTT_DISCOVERY_PREFIX"/sensor/"$MQTT_DEVICE_NAME"_"$MQTT_SERIAL_NUMBER"/$1/config" \
-#         -r \
-#         -m "{
-#             \"name\": \"$5\",
-#             \"uniq_id\": \""$MQTT_SERIAL_NUMBER"_$1\",
-#             \"device\": { \"ids\": \""$MQTT_SERIAL_NUMBER"\", \"mf\": \""$MQTT_MANUFACTURER"\", \"mdl\": \""$MQTT_MODEL"\", \"name\": \""$MQTT_DEVICE_NAME"\", \"sw\": \""$MQTT_VER"\"},
-#             \"state_topic\": \""$MQTT_DISCOVERY_PREFIX"/sensor/"$MQTT_DEVICE_NAME"_"$MQTT_SERIAL_NUMBER"/$1\",
-#             \"state_class\": \"total_increasing\",
-#             \"device_class\": \"$4\",
-#             \"unit_of_measurement\": \"$2\",
-#             \"icon\": \"mdi:$3\"
-#         }"
-# }
-
-# TODO some of such topics should use binary sensor
-registerModeTopic () {
+# $1 - control to register.
+# $2 - device class. Optional. One of https://www.home-assistant.io/integrations/sensor/#device-class
+# $3 - unit of measurement. Optional.
+# $4 - state class. If NOT "None", the sensor is assumed to be numerical and will be displayed as a
+#                   line-chart in the frontend instead of as discrete values.
+#                   If not set, "measurement" will be used by this script.
+#                   https://developers.home-assistant.io/docs/core/entity/sensor/#available-state-classes
+# https://www.home-assistant.io/integrations/sensor.mqtt/
+registerSensor() {
   CONTROL="$1"
-  UNIT_OF_MEASURE="$2"
-  MDI_ICON="$3"
-  DEVICE_CLASS="$4"
+  DEVICE_CLASS="$2"
+  UNIT_OF_MEASURE="$3"
+  STATE_CLASS="$4"
+
+  if [ -z "$2" ]; then
+    # If device class wasn't passed to the function - don't include it into the payload.
+    DEVICE_CLASS=""
+    UNIT_OF_MEASURE=""
+  else
+    DEVICE_CLASS="
+  \"device_class\":\"$DEVICE_CLASS\","
+    if [ -z "$3" ]; then
+      # If measurement units wasn't passed to the function - don't include it into the payload.
+      UNIT_OF_MEASURE=""
+    else
+      UNIT_OF_MEASURE=",
+  \"unit_of_measurement\": \"$UNIT_OF_MEASURE\""
+    fi
+  fi
+
+  if [ -z "$4" ]; then
+    # If state class wasn't passed to the function - use "measurement"
+    STATE_CLASS="measurement"
+  fi
+
   CONTROL_NAME=`echo "$CONTROL" | tr _ " "` # Replace underscores "_" with whitespaces.
-
   PAYLOAD="{
+  \"device\":$DEVICE_INFO_JSON,$DEVICE_CLASS
   \"name\": \"$CONTROL_NAME\",
-  \"unique_id\": \""$MQTT_SERIAL_NUMBER"_$CONTROL\",
-  \"device\": { \"ids\": \""$MQTT_SERIAL_NUMBER"\", \"mf\": \""$MQTT_MANUFACTURER"\", \"mdl\": \""$MQTT_MODEL"\", \"name\": \""$MQTT_DEVICE_NAME"\", \"sw\": \""$MQTT_VER"\"},
-  \"state_topic\": \""$MQTT_DISCOVERY_PREFIX"/sensor/"$MQTT_DEVICE_NAME"_"$MQTT_SERIAL_NUMBER"/$CONTROL\",
-  \"unit_of_measurement\": \"$UNIT_OF_MEASURE\",
-  \"icon\": \"mdi:$MDI_ICON\"
-}"
+  \"state_class\": \"$STATE_CLASS\",
+  \"state_topic\": \"$MQTT_DISCOVERY_PREFIX/sensor/$DEVICE_ID/$CONTROL\",
+  \"unique_id\": \""$DEVICE_SERIAL_NUMBER"_$CONTROL\"$UNIT_OF_MEASURE}"
 
-  registerControl $CONTROL $PAYLOAD
-}
-registerInverterRawCMD () {
-    mosquitto_pub \
-        -h $MQTT_SERVER \
-        -p $MQTT_PORT \
-        -u "$MQTT_USERNAME" \
-        -P "$MQTT_PASSWORD" \
-        -i ""$MQTT_DEVICE_NAME"_"$MQTT_SERIAL_NUMBER"" \
-        -t ""$MQTT_DISCOVERY_PREFIX"/sensor/"$MQTT_DEVICE_NAME"_"$MQTT_SERIAL_NUMBER"/COMMANDS/config" \
-        -r \
-        -m "{
-            \"name\": \""$MQTT_DEVICE_NAME"_COMMANDS\",
-            \"uniq_id\": \""$MQTT_DEVICE_NAME"_"$MQTT_SERIAL_NUMBER"\",
-            \"device\": { \"ids\": \""$MQTT_SERIAL_NUMBER"\", \"mf\": \""$MQTT_MANUFACTURER"\", \"mdl\": \""$MQTT_MODEL"\", \"name\": \""$MQTT_DEVICE_NAME"\", \"sw\": \""$MQTT_VER"\"},
-            \"state_topic\": \""$MQTT_DISCOVERY_PREFIX"/sensor/"$MQTT_DEVICE_NAME"_"$MQTT_SERIAL_NUMBER"/COMMANDS\"
-            }"
+  registerControl "sensor" "$CONTROL" "$PAYLOAD"
 }
 
-# TODO review/rewrite all
-#              $1code    $2unit of measure  $3mdi $4class
-registerModeTopic "AC_charge_on" "" "power" "None"
-registerTopic "AC_grid_frequency" "Hz" "current-ac" "frequency"
-registerTopic "AC_grid_voltage" "V" "power-plug" "voltage"
-registerTopic "AC_out_frequency" "Hz" "current-ac" "frequency"
-registerTopic "AC_out_voltage" "V" "power-plug" "voltage"
-registerTopic "Battery_bulk_voltage" "V" "current-dc" "voltage"
-registerTopic "Battery_capacity" "%" "battery-outline" "battery"
-registerTopic "Battery_charge_current" "A" "current-dc" "current"
-registerTopic "Battery_discharge_current" "A" "current-dc" "current"
-registerTopic "Battery_float_voltage" "V" "current-dc" "voltage"
-registerTopic "Battery_recharge_voltage" "V" "current-dc" "voltage"
-registerTopic "Battery_redischarge_voltage" "V" "battery-negative" "voltage"
-registerTopic "Battery_under_voltage" "V" "current-dc" "voltage"
-registerTopic "Battery_voltage" "V" "battery-outline" "voltage"
-registerTopic "Battery_voltage_offset_for_fans_on" "10mV" "battery-outline" "voltage"
-registerTopic "Bus_voltage" "V" "details" "voltage"
-registerModeTopic "Charger_source_priority" "" "solar-power" "None"
-registerModeTopic "Charging_to_floating_mode" "" "solar-power" "None"
-registerModeTopic "Dustproof_installed" "" "solar-power" "None" # 1-dustproof installed,0-no dustproof
-registerModeTopic "Eeprom_version" "" "power" "None"
-registerTopic "Heatsink_temperature" "°C" "details" "temperature"
-registerModeTopic "Load_pct" "%" "brightness-percent" "None"
-registerModeTopic "Load_status_on" "" "power" "None"
-registerTopic "Load_va" "VA" "chart-bell-curve" "apparent_power"
-registerTopic "Load_watt" "W" "chart-bell-curve" "power"
-# registerEnergyTopic "Load_watthour" "kWh" "chart-bell-curve" "energy" "Load kWatthour"
-registerTopic "Max_charge_current" "A" "current-ac" "current"
-registerTopic "Max_grid_charge_current" "A" "current-ac" "current"
-registerModeTopic "Inverter_mode" "" "solar-power" "None" # 1 = Power_On, 2 = Standby, 3 = Line, 4 = Battery, 5 = Fault, 6 = Power_Saving, 7 = Unknown
-registerModeTopic "Out_source_priority" "" "grid" "None"
-registerTopic "PV_in_current" "A" "solar-panel-large" "current"
-registerTopic "PV_in_voltage" "V" "solar-panel-large" "voltage"
-# registerEnergyTopic "PV_in_watthour" "kWh" "solar-panel-large" "energy" "PV in kWatthour"
-registerTopic "PV_in_watts" "W" "solar-panel-large" "power"
-registerTopic "PV_charging_power" "W" "solar-panel-large" "power"
-registerModeTopic "SCC_charge_on" "" "power" "None"
-registerTopic "SCC_voltage" "V" "current-dc" "voltage"
-registerModeTopic "Switch_On" "" "power" "None"
-registerModeTopic "Warnings" "" "power" "None"
+# Info about grid.
+registerSensor "Grid_voltage" "voltage"
+registerSensor "Grid_frequency" "frequency" "Hz"
 
-# Add in a separate topic so we can send raw commands from assistant back to the inverter via MQTT (such as changing power modes etc)...
-registerInverterRawCMD
+# Info about the output.
+registerSensor "Output_voltage" "voltage"
+registerSensor "Output_frequency" "frequency" "Hz"
+registerSensor "Output_apparent_power" "apparent_power"
+registerSensor "Output_active_power" "power" "W"
+registerSensor "Output_load_percent" "None" "%"
+
+# Info about batteries
+## TODO: make it https://www.home-assistant.io/integrations/select.mqtt/
+registerSensor "Battery_type"
+registerSensor "Battery_capacity" "battery"
+registerSensor "Battery_voltage" "voltage"
+registerSensor "Battery_voltage_from_SCC" "voltage"
+registerSensor "Battery_voltage_from_SCC2" "voltage"
+registerSensor "Battery_discharge_current" "current" "A"
+registerSensor "Battery_charge_current" "current" "A"
+registerSensor "Battery_nominal_voltage" "voltage"
+registerSensor "Battery_under_voltage" "voltage"
+registerSensor "Battery_float_voltage" "voltage"
+registerSensor "Battery_bulk_voltage" "voltage"
+registerSensor "Battery_stop_discharging_voltage_with_grid" "voltage"
+registerSensor "Battery_stop_charging_voltage_with_grid" "voltage"
+
+# PV (Photovoltaics, i.e. solar panels) data.
+registerSensor "PV_watts" "power" "W"
+registerSensor "PV2_watts" "power" "W"
+registerSensor "PV_voltage" "voltage"
+registerSensor "PV2_voltage" "voltage"
+registerSensor "PV_bus_voltage" "voltage"
+
+# Mode & status & priorities
+## TODO: these https://www.home-assistant.io/integrations/select.mqtt/
+registerSensor "Mode"
+registerSensor "Out_source_priority"
+registerSensor "Charger_source_priority"
+
+# Various info.
+registerSensor "Heatsink_temperature" "temperature"
+registerSensor "Mptt1_charger_temperature" "temperature"
+registerSensor "Mptt2_charger_temperature" "temperature"
+# TODO: find out how these will be handled. Like whether the inverter accumulates warnings and
+#  returns them once (and then "resets" them), or warnings aren't accumulated and shown only to
+#  reflect the current situation.
+#Warnings - const list of strings
+
+# Add a separate topic so we can send raw commands from HomeAssistant back to the inverter via MQTT
+# (such as changing power modes etc.).
+registerSensor "COMMANDS" "" "" "None"

@@ -1,14 +1,19 @@
 #!/bin/bash
 
+CONFIG_FILE="/opt/mqtt.json"
+
+# stdbuf - Run COMMAND, with modified buffering operations for its standard streams.
+# i - input, o - output, e - error.
+# If MODE is 'L' the corresponding stream will be line buffered. This option is invalid with standard input.
+# If MODE is '0' the corresponding stream will be unbuffered.
 UNBUFFER='stdbuf -i0 -oL -eL'
 
 # Init the mqtt server.  This creates the config topics in the MQTT server
 # that the MQTT integration uses to create entities in HA.
 
-# broker using persistence (default HA config)
-$UNBUFFER /opt/inverter-mqtt/mqtt-init.sh
-
-# broker not using persistence
+# If broker using persistence (default HA config)...
+$UNBUFFER /opt/inverter-mqtt/mqtt-init.sh "$CONFIG_FILE"
+# otherwise if broker not using persistence, uncomment this:
 #(while :; do $UNBUFFER /opt/inverter-mqtt/mqtt-init.sh; sleep 300; done) &
 
 # Run the MQTT subscriber process in the background (so that way we can change
