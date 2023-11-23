@@ -27,6 +27,18 @@ services:
     volumes:
       - ./config/:/opt/config
 
+    devices:
+      # USB Port Mapping
+      - /dev/bus/usb:/dev/bus/usb:rwm
+      - /dev/ttyUSB0:/dev/ttyUSB0:rwm
+      - /dev/ttyUSB1:/dev/ttyUSB1:rwm
+      # Serial Port Mapping...
+
+      - /dev/ttyS0:/dev/ttyS0
+      - /dev/ttyS1:/dev/ttyS1
+      - /dev/ttyS2:/dev/ttyS2
+      - /dev/ttyMOD1:/dev/ttyMOD1
+
   # Used to auto-update images as we release new versions...
   #watchtower:
     # Please see the following for configuration options:
