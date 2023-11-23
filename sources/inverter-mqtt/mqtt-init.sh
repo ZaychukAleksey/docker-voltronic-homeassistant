@@ -33,7 +33,7 @@ registerControl() {
   echo -e "\nDISCOVERY_TOPIC=$DISCOVERY_TOPIC"
   echo "PAYLOAD=$PAYLOAD"
 
-  mosquitto_pub -h $MQTT_SERVER -p $MQTT_PORT -u "$MQTT_USERNAME" -P "$MQTT_PASSWORD" \
+  mosquitto_pub -h "$MQTT_SERVER" -p "$MQTT_PORT" -u "$MQTT_USERNAME" -P "$MQTT_PASSWORD" \
         --id "$DEVICE_ID" \
         --topic "$DISCOVERY_TOPIC" \
         --retain \

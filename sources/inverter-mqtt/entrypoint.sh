@@ -1,6 +1,7 @@
 #!/bin/bash
 
 CONFIG_FILE="/opt/mqtt.json"
+INVERTER_POLLER_BINARY="/opt/inverter_poller"
 
 # stdbuf - Run COMMAND, with modified buffering operations for its standard streams.
 # i - input, o - output, e - error.
@@ -18,7 +19,11 @@ $UNBUFFER /opt/inverter-mqtt/mqtt-init.sh "$CONFIG_FILE"
 
 # Run the MQTT subscriber process in the background (so that way we can change
 # the configuration on the inverter from home assistant).
-$UNBUFFER /opt/inverter-mqtt/mqtt-subscriber.sh &
+$UNBUFFER /opt/inverter-mqtt/mqtt-subscriber.sh "$CONFIG_FILE" "$INVERTER_POLLER_BINARY" &
 
-# Push poller updates every 30 seconds.
-while :; do $UNBUFFER /opt/inverter-mqtt/mqtt-push.sh; sleep 7; done
+# Push poller updates every ~10 seconds.
+while :;
+do
+  $UNBUFFER /opt/inverter-mqtt/mqtt-push.sh "$CONFIG_FILE" "$INVERTER_POLLER_BINARY";
+  sleep 7;
+done
