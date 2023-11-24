@@ -6,13 +6,11 @@ services:
   voltronic-mqtt:
     # If that "build" section is not commented out, then the image will be built
     # locally rather than pulled from the dockerhub.
-    build:
-      context: .
-      dockerfile: Dockerfile.dev
+    #build:
+      #context: .
+      #dockerfile: Dockerfile.dev
 
-    # We're now (finally) supporting Multi-Arch builds (via Github actions) on Docker Hub!
-    # https://community.ibm.com/community/user/powerdeveloper/blogs/siddhesh-ghadi/2023/02/08/build-multi-arch-images-on-github-actions-with-bui
-    image: bushrangers/ha-voltronic-mqtt
+    image: zaychukaleksey/ha-voltronic-mqtt
 
     container_name: voltronic-mqtt
 

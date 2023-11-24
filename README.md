@@ -4,29 +4,26 @@ The following changes were made:
 - Code simplified and rewritten on C++20 using [Google Style](https://google.github.io/styleguide/cppguide.html).
 - Implemented PI18 protocol.
 - Enhancements in logging and error-handling.
-- Reduce the size of docker image.
+- Reduced the size of the docker image.
 
-<b>This is still WORK-IN-PROGRESS. What doesn't work at the moment:</b>
+<details><summary><b>This is WORK-IN-PROGRESS. See here what doesn't work at the moment.</b></summary>
 
 - PI30 protocol doesn't work.
-- Integration with HomeAssistant :D.
+</details>
 
-Further plans:
+<details><summary><b>Coming soon:</b></summary>
 
-- (soon) Fix integration with HomeAssistant.
-- (soon) Make PI30 protocol work again.
-- Add support for PI17 protocol.
-- Fix Multi-Arch builds.
+- Fix PI30 protocol support.
+- Add PI17 protocol support.
 - Make integration with HomeAssistant interactive (i.e. be able to change inverter parameters from HomeAssistant in human-readable manner).
 - Implement protocol autodetection.
+</details>
 
 ---
 
-# A Docker based Home Assistant interface for MPP/Voltronic Solar Inverters 
+# A Docker-based Home Assistant interface for MPP/Voltronic Solar Inverters 
 
-**Docker Hub:** [`bushrangers/ha-voltronic-mqtt:latest`](https://hub.docker.com/r/bushrangers/ha-voltronic-mqtt/)
-
-![License](https://img.shields.io/github/license/ned-kelly/docker-voltronic-homeassistant.svg) ![Docker Pulls](https://img.shields.io/docker/pulls/bushrangers/ha-voltronic-mqtt.png) ![buildx](https://github.com/ned-kelly/docker-voltronic-homeassistant/workflows/buildx/badge.svg)
+**Docker Hub:** [`zaychukaleksey/ha-voltronic-mqtt:latest`](https://hub.docker.com/repository/docker/zaychukaleksey/ha-voltronic-mqtt/general)
 
 ---
 
@@ -38,7 +35,7 @@ By remotely setting values via MQTT you can implement many more complex forms of
 
  - Changing the power mode to '_solar only_' during the day, but then change back to '_grid mode charging_' for your AGM or VLRA batteries in the evenings, but if it's raining (based on data from your weather station), set the charge mode to `PCP02` _(Charge based on 'Solar and Utility')_ so that the following day there's plenty of juice in your batteries...
 
- - Programatically set the charge & float voltages based on additional sensors _(such as a Zigbee [Temperature Sensor](https://www.zigbee2mqtt.io/devices/WSDCGQ11LM.html), or a [DHT-22 + ESP8266](https://github.com/bastianraschke/dht-sensor-esp8266-homeassistant))_ - This way if your battery box is too hot/cold you can dynamically adjust the voltage so that the batteries are not damaged...
+ - Programmatically set the charge & float voltages based on additional sensors _(such as a Zigbee [Temperature Sensor](https://www.zigbee2mqtt.io/devices/WSDCGQ11LM.html), or a [DHT-22 + ESP8266](https://github.com/bastianraschke/dht-sensor-esp8266-homeassistant))_ - This way if your battery box is too hot/cold you can dynamically adjust the voltage so that the batteries are not damaged...
 
  - Dynamically adjust the inverter's "solar power balance" and other configuration options to ensure that you get the most "bang for your buck" out of your setup... 
 
@@ -88,7 +85,7 @@ docker-compose up --detach
 _**Note:**_
 
   - builds on docker hub are currently for `linux/amd64,linux/arm/v6,linux/arm/v7,linux/arm64,linux/386` -- If you have issues standing up the image on your Linux distribution (i.e. An old Pi/ARM device) you may need to manually build the image to support your local device architecture - This can be done by uncommenting the build flag in your docker-compose.yml file.
-  
+
   - The default `docker-compose.yml` file includes Watchtower, which can be  configured to auto-update this image when we push new changes to github - Please **uncomment if you wish to auto-update to the latest builds of this project**.
 
 ## Integrating into Home Assistant.
@@ -97,7 +94,7 @@ Providing you have setup [MQTT](https://www.home-assistant.io/components/mqtt/) 
 
 From here you can setup [Graphs](https://www.home-assistant.io/lovelace/history-graph/) to display sensor data, and optionally change state of the inverter by "[publishing](https://www.home-assistant.io/docs/mqtt/service/)" a string to the inverter's primary topic like so:
 
-![Example, Changing the Charge Priority](images/mqtt-publish-packet.png "Example, Changing the Charge Priority")
+![Example, Changing the Charge Priority](https://github.com/ned-kelly/docker-voltronic-homeassistant/raw/master/images/mqtt-publish-packet.png "Example, Changing the Charge Priority")
 _Example: Changing the Charge Priority of the Inverter_
 
 **COMMON COMMANDS THAT CAN BE SENT TO THE INVERTER**
@@ -183,7 +180,7 @@ When you will use this fork you need to do the following commands on your device
 11) sudo docker exec -it voltronic-mqtt bash -c '/opt/inverter-cli/bin/inverter_poller -d -1' (this is to test to see is everything ok regarding connection between inverter and docker)
 
 this is the output result of my inverter:
-````
+```
 Wed Jun 15 19:14:55 2022 INVERTER: Debug set
 Wed Jun 15 19:14:55 2022 DEBUG:  Current CRC: 49 C1
 Wed Jun 15 19:14:55 2022 DEBUG:  Send buffer hex bytes:  ( 51 4d 4f 44 49 c1 0d )
@@ -285,7 +282,6 @@ INVERTER: wattfactor from config is 1.00
   "Warnings":"00000000000000000000000000000000"
 }
 Wed Jun 15 19:14:57 2022 INVERTER: All queries complete, exiting loop.
-
 ```
 
 Example of command for Set battery re-discharge voltage to 26.1V
@@ -296,4 +292,3 @@ sudo docker exec -it voltronic-mqtt bash -c '/opt/inverter-cli/bin/inverter_poll
  I have put in home assistant folder the examples of what I have for sending commands to inverter, template sensor for warnings, etc. 
 For the input buttons you will use the helpers in HA to create them. 
 The names and the option of them look in automations examples.
-

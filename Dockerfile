@@ -1,12 +1,15 @@
 FROM debian:bullseye-slim
 
-# To build this image:
+# To build this image locally:
 # docker build -t voltronic --file Dockerfile.dev .
 #
 # To rebuild from scratch:
 # docker image rm ...
 # docker builder prune --all
 # docker build -t voltronic --file Dockerfile.dev .
+#
+# To build multiarch image and push it into the repo:
+# docker buildx build --platform=linux/amd64,linux/arm/v6,linux/arm/v7,linux/arm64,linux/386 -t zaychukaleksey/ha-voltronic-mqtt:latest --push .
 
 # Copy files.
 COPY sources/ /opt/
