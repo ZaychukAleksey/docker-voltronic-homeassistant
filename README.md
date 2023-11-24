@@ -54,7 +54,7 @@ _Example #2: Grafana summary allowing more detailed analysis of data collected, 
 
 - Docker-compose
 - [Voltronic/Axpert/MPPSolar](https://www.ebay.com.au/sch/i.html?_from=R40&_trksid=p2334524.m570.l1313.TR11.TRC1.A0.H0.Xaxpert+inverter.TRS0&_nkw=axpert+inverter&_sacat=0&LH_TitleDesc=0&LH_PrefLoc=2&_osacat=0&_odkw=solar+inverter&LH_TitleDesc=0) based inverter that you want to monitor
-- Home Assistant [running with a MQTT Server](https://www.home-assistant.io/components/mqtt/)
+- Home Assistant [running with an MQTT Server](https://www.home-assistant.io/components/mqtt/)
 
 
 ## Configuration & Standing Up

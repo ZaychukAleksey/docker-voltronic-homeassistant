@@ -14,10 +14,6 @@ services:
 
     container_name: voltronic-mqtt
 
-    # Give extended privileges to this container. That allows us to access USB or serial ports.
-    # https://docs.docker.com/engine/reference/run/#runtime-privilege-and-linux-capabilities
-#    privileged: true
-
     # https://docs.docker.com/config/containers/start-containers-automatically/#use-a-restart-policy
     restart: always
 
@@ -30,8 +26,8 @@ services:
       - /dev/bus/usb:/dev/bus/usb:rwm
       - /dev/ttyUSB0:/dev/ttyUSB0:rwm
       - /dev/ttyUSB1:/dev/ttyUSB1:rwm
-      # Serial Port Mapping...
 
+      # Serial Port Mapping...
       - /dev/ttyS0:/dev/ttyS0
       - /dev/ttyS1:/dev/ttyS1
       - /dev/ttyS2:/dev/ttyS2

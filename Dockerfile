@@ -29,7 +29,7 @@ RUN cd /opt && cmake . && make -j2
 FROM alpine:latest
 
 # Install packages, required for mqtt-related scripts.
-RUN apk update && apk add --no-cache bash jq mosquitto-clients
+RUN apk update && apk add --no-cache bash coreutils jq mosquitto-clients libstdc++
 
 # Copy inverter_poller binary from the build image into our result image.
 COPY --from=build_image /opt/inverter_poller /opt
