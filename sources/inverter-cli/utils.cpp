@@ -7,7 +7,7 @@ std::string PrintBytesAsHex(std::string_view str) {
   // Each input symbol will be turned into 2 hex symbols + whitespace
   std::string result;
   result.reserve(str.length() * 3 - 1);
-  char buffer[2];
+  char buffer[20];
   for (std::size_t i = 0; i < str.length(); ++i) {
     sprintf(buffer, "%02x", str[i]);
     if (i != 0) {
