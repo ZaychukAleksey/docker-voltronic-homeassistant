@@ -265,3 +265,13 @@ StatusInfo Pi18ProtocolAdapter::GetStatusInfo() {
   // data[27] - Local parallel ID (a: 0~(parallel number - 1))
   return result;
 }
+
+int Pi18ProtocolAdapter::GetTotalGeneratedEnergy() {
+  // Response: NNNNNNNN, unit: KWh
+  auto str = GetTotalGeneratedEnergyRaw();
+  int result;
+  if(sscanf(str.c_str(), "%8d", &result) != 1) {
+    throw std::runtime_error("Unexpected data in GetTotalGeneratedEnergy: " + str);
+  }
+  return result;
+}

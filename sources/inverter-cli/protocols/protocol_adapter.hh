@@ -23,6 +23,8 @@ class ProtocolAdapter {
   [[nodiscard]] virtual StatusInfo GetStatusInfo() = 0;
   [[nodiscard]] virtual RatedInformation GetRatedInfo() = 0;
 
+  [[nodiscard]] virtual int GetTotalGeneratedEnergy() = 0;
+
  protected:
   ProtocolAdapter(SerialPort&&) = delete;
   explicit ProtocolAdapter(const SerialPort& port) : port_(port) {}

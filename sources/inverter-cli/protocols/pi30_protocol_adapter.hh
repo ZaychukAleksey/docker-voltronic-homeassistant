@@ -13,6 +13,8 @@ class Pi30ProtocolAdapter : public ProtocolAdapter {
   StatusInfo GetStatusInfo() override;
   RatedInformation GetRatedInfo() override;
 
+  int GetTotalGeneratedEnergy() override;
+
  protected:
   bool UseCrcInQueries() override { return true; }
 

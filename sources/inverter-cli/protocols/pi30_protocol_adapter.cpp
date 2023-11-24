@@ -46,3 +46,7 @@ std::vector<std::string> Pi30ProtocolAdapter::GetWarnings() {
 StatusInfo Pi30ProtocolAdapter::GetStatusInfo() {
   throw std::runtime_error("Not implemented");
 }
+
+int Pi30ProtocolAdapter::GetTotalGeneratedEnergy() {
+  throw std::runtime_error("Not implemented");
+}

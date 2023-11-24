@@ -143,6 +143,7 @@ registerSensor "PV2_watts" "power" "W"
 registerSensor "PV_voltage" "voltage" "V" "current-dc"
 registerSensor "PV2_voltage" "voltage" "V" "current-dc"
 registerSensor "PV_bus_voltage" "voltage" "V" "current-dc"
+registerSensor "PV_total_generated_energy" "energy" "kWh"
 
 # Mode & status & priorities
 ## TODO: these https://www.home-assistant.io/integrations/select.mqtt/

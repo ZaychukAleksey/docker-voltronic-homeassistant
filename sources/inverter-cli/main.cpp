@@ -63,6 +63,7 @@ void PrintResultInJson(ProtocolAdapter& adapter, const Settings& settings) {
   auto mode = adapter.GetMode();
   auto rated_info = adapter.GetRatedInfo();
   auto status = adapter.GetStatusInfo();
+  auto total_energy = adapter.GetTotalGeneratedEnergy();
   auto warnings = adapter.GetWarnings();
 
   // There appears to be a discrepancy in actual DMM measured current vs what the meter is
@@ -113,6 +114,7 @@ void PrintResultInJson(ProtocolAdapter& adapter, const Settings& settings) {
   printf("  \"PV_voltage\":%.1f,\n", status.pv_input_voltage);
   printf("  \"PV2_voltage\":%.1f,\n", status.pv2_input_voltage);
   printf("  \"PV_bus_voltage\":%d,\n", status.pv_bus_voltage);
+  printf("  \"PV_total_generated_energy\":%d,\n", total_energy);
 
   // Mode & status & priorities
   printf("  \"Mode\":\"%s\",\n", DeviceModeToString(mode).data());
