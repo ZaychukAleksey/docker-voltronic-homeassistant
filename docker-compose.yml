@@ -31,7 +31,11 @@ services:
       - /dev/ttyS0:/dev/ttyS0
       - /dev/ttyS1:/dev/ttyS1
       - /dev/ttyS2:/dev/ttyS2
+
+      # These are required to map RS-232 ports on Wirenboard controller.
       - /dev/ttyMOD1:/dev/ttyMOD1
+      - /dev/ttyMOD2:/dev/ttyMOD2
+      - /dev/ttyMOD3:/dev/ttyMOD3
 
   # Used to auto-update images as we release new versions...
   #watchtower:
