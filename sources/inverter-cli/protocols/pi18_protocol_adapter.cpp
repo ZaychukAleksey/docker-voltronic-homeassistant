@@ -139,7 +139,7 @@ RatedInformation Pi18ProtocolAdapter::GetRatedInfo() {
   result.output_mode = GetOutputMode(data[22]);
   // (Unused) data[23] - Solar power priority (0: Battery-Load-Utility, 1: Load-Battery-Utility)
   // (Unused) data[24] - MPPT string
-  // (Unused) data[25] - ??? There is no such param according to the standard, but my inverter
+  // (Unused) data[25] - ??? There is no such param according to the protocol, but my inverter
   // returns it.
   return result;
 }

@@ -56,8 +56,8 @@ inline std::string_view BatteryTypeToString(BatteryType type) {
     case BatteryType::kAgm: return "AGM";
     case BatteryType::kFlooded: return "Flooded";
     case BatteryType::kUser: return "User-defined";
-    case BatteryType::kPYL: return "PYL (5048MG & 5048MGX Remote Panel Communication Protocol)";
-    case BatteryType::kSH: return "SH (5048MG & 5048MGX Remote Panel Communication Protocol)";
+    case BatteryType::kPYL: return "PYL";
+    case BatteryType::kSH: return "SH";
   }
   throw std::runtime_error(fmt::format("Unknown BatteryType: {}", (int) type));
 }
@@ -141,6 +141,7 @@ struct RatedInformation {
   /// drain the batteries even when the grid is available (Solar -> Battery -> Utility).
   float battery_stop_discharging_voltage_with_grid;    // volts (V).
   /// Battery stop charging voltage when grid is available.
+  /// Also called "battery re-discharge voltage".
   float battery_stop_charging_voltage_with_grid;       // volts (V).
   /// Voltage level at which the inverter maintains a constant voltage to keep the battery fully
   /// charged.

@@ -4,8 +4,6 @@
 #include "pi18_protocol_adapter.hh"
 #include "pi30_protocol_adapter.hh"
 
-#include "spdlog/spdlog.h"
-
 namespace {
 
 void CheckStartsWith(std::string_view response, std::string_view expected_prefix) {
