@@ -180,6 +180,7 @@ std::string SerialPort::Query(std::string_view query, bool with_crc, int n_retri
       return Receive();
     } catch (const CrcMismatchException&) {
       if (--n_retries <= 0) throw;
+      usleep(500000);
     }
   }
 }

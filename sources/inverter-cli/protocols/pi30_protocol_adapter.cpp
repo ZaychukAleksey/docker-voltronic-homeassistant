@@ -216,5 +216,6 @@ StatusInfo Pi30ProtocolAdapter::GetStatusInfo() {
 }
 
 int Pi30ProtocolAdapter::GetTotalGeneratedEnergy() {
-  throw std::runtime_error("Not implemented");
+  // It seems that only InfiniSolarE5.5KW supports that.
+  return 0;
 }
