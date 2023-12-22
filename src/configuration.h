@@ -24,10 +24,27 @@ class CommandLineArguments {
   std::vector<std::string> tokens_;
 };
 
-struct Settings {
+struct MqttSessings {
+  std::string server;
+  int port;
+  std::string user;
+  std::string password;
+  std::string discovery_prefix;
+};
+
+struct DeviceSettings {
   /// The device in OS, e.g. "/dev/hidraw0".
-  std::string device_name;
+  std::string path;
+  std::string name;
+  std::string manufacturer;
+  std::string model;
+  std::string serial_number;
+};
+
+struct Settings {
   Protocol protocol;
+  DeviceSettings device;
+  MqttSessings mqtt;
 
   /// This allows you to modify the amperage in case the inverter is giving an incorrect
   /// reading compared to measurement tools.  Normally this will remain '1'

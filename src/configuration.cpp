@@ -40,6 +40,16 @@ static float ToFloat(const std::string& option_name, const std::string& option_v
   }
 }
 
+static int ToInt(const std::string& option_name, const std::string& option_value) {
+  try {
+    return stoi(option_value);
+  } catch (...) {
+    throw std::runtime_error(fmt::format(
+        "ERROR. Incorrect value '{}' for option '{}'. Integer point value is expected.",
+        option_value, option_name));
+  }
+}
+
 Settings LoadSettingsFromFile(const std::string& filename) {
   std::ifstream file(filename);
   if (!file) {
@@ -58,10 +68,29 @@ Settings LoadSettingsFromFile(const std::string& filename) {
       throw std::runtime_error("ERROR. Incorrect line in configuration file: \"" + line + '"');
     }
 
+    // TODO: refactor code with boost::program_options
     auto parameter_name = line.substr(0, delimiter);
     auto parameter_value = line.substr(delimiter + 1, std::string::npos - delimiter);
     if (parameter_name == "device") {
-      result.device_name = parameter_value;
+      result.device.path = std::move(parameter_value);
+    } else if (parameter_name == "device_name") {
+      result.device.name = std::move(parameter_value);
+    } else if (parameter_name == "device_manufacturer") {
+      result.device.manufacturer = std::move(parameter_value);
+    } else if (parameter_name == "device_model") {
+      result.device.model = std::move(parameter_value);
+    } else if (parameter_name == "device_serial_number") {
+      result.device.serial_number = std::move(parameter_value);
+    } else if (parameter_name == "mqtt_server") {
+      result.mqtt.server = std::move(parameter_value);
+    } else if (parameter_name == "mqtt_port") {
+      result.mqtt.port = ToInt(parameter_name, parameter_value);
+    } else if (parameter_name == "mqtt_discovery_prefix") {
+      result.mqtt.discovery_prefix = std::move(parameter_value);
+    } else if (parameter_name == "mqtt_username") {
+      result.mqtt.user = std::move(parameter_value);
+    } else if (parameter_name == "mqtt_password") {
+      result.mqtt.password = std::move(parameter_value);
     } else if (parameter_name == "protocol") {
       result.protocol = ProtocolFromString(parameter_value);
     } else if (parameter_name == "amperage_factor") {

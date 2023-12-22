@@ -139,7 +139,7 @@ int main(int argc, char* argv[]) {
   InitLogging(arguments);
 
   auto settings = LoadSettingsFromFile(GetConfigurationFileName(arguments));
-  SerialPort port(settings.device_name);
+  SerialPort port(settings.device.path);
 
   // Logic to send 'raw commands' to the inverter.
   if (arguments.IsSet("-r")) {
