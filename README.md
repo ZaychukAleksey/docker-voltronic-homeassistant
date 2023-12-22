@@ -57,8 +57,8 @@ It's pretty straightforward, just clone down the sources and set the configurati
 
 ```bash
 # Clone down sources on the host you want to monitor.
-git clone https://github.com/ZaychukAleksey/docker-voltronic-homeassistant.git /opt/ha-inverter-mqtt-agent
-cd /opt/ha-inverter-mqtt-agent
+git clone https://github.com/ZaychukAleksey/voltronic-homeassistant.git /opt/voltronic-homeassistant
+cd /opt/voltronic-homeassistant
 
 # Configure inverter connection. See descriptions in inverter.conf.
 nano config/inverter.conf

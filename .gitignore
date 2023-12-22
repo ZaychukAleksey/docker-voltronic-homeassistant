@@ -1,5 +1,6 @@
 .DS_Store
 .vscode/settings.json
+.idea
 CMakeCache.txt
 CMakeFiles
 Makefile
