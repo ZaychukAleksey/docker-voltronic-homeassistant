@@ -91,47 +91,14 @@ From here you can setup [Graphs](https://www.home-assistant.io/lovelace/history-
 ![Example, Changing the Charge Priority](https://github.com/ned-kelly/docker-voltronic-homeassistant/raw/master/images/mqtt-publish-packet.png "Example, Changing the Charge Priority")
 _Example: Changing the Charge Priority of the Inverter_
 
-**RAW COMMANDS THAT CAN BE SENT TO THE INVERTER**
-
-_(see [protocol manual](http://forums.aeva.asn.au/uploads/293/HS_MS_MSX_RS232_Protocol_20140822_after_current_upgrade.pdf) for complete list of supported commands)_
-
-
-
-```
-DESCRIPTION:                PAYLOAD:  OPTIONS:
-----------------------------------------------------------------
-Set output source priority  POP00     (Utility first)
-                            POP01     (Solar first)
-                            POP02     (SBU)
-
-Set charger priority        PCP00     (Utility first)
-                            PCP01     (Solar first)
-                            PCP02     (Solar and utility)
-                            PCP03     (Solar only)
-
-Set the Charge/Discharge Levels & Cutoff
-                            PBDV26.9  (Don't discharge the battery unless it is at 26.9v or more)
-                            PBCV24.8  (Switch back to 'grid' when battery below 24.8v)
-                            PBFT27.1  (Set the 'float voltage' to 27.1v)
-                            PCVV28.1  (Set the 'charge voltage' to 28.1v)
-
-Set other commands          PEa / PDa (Enable/disable buzzer)
-                            PEb / PDb (Enable/disable overload bypass)
-                            PEj / PDj (Enable/disable power saving)
-                            PEu / PDu (Enable/disable overload restart);
-                            PEx / PDx (Enable/disable backlight)
-```
-
-*NOTE:* When setting/configuring your charge, discharge, float & cutoff voltages for the first time, it's worth  understanding how to optimize charging conditions to extend service life of your battery: https://batteryuniversity.com/learn/article/charging_the_lead_acid_battery
-
+Raw commands that can be sent to the inverter depend on the protocol that is used by your inverter. 
+Protocols could be found here: https://github.com/ZaychukAleksey/voltronic-homeassistant/tree/master/protocols.
 
 ### Using `inverter_poller` binary directly
 
-This project uses heavily modified sources, from [manio's](https://github.com/manio/skymax-demo) original demo, and be compiled to run standalone on Linux, Mac, and Windows (via Cygwin).
+To compile inverter_poller binary locally, run: `cmake . && make`.
 
-Just head to the `sources/inverter-cli` directory and build it directly using: `cmake . && make`.
-
-Please, run `./inverter_poller --help` to see supported commands/arguments with examples.
+Please, run `./inverter_poller --help` to see supported commands/arguments.
 
 ### Bonus: Lovelace Dashboard Files
 

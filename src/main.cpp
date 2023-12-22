@@ -17,28 +17,15 @@
 
 
 void PrintHelp() {
-  std::cout
-      << "\nUSAGE:  ./inverter_poller <args> [-r <command>], [-h | --help], [-1 | --run-once]\n\n"
-         "SUPPORTED ARGUMENTS:\n"
-         "    -r <raw-command>      TX 'raw' command to the inverter\n"
-         "    --crc                 Append CRC to the raw command\n"
-         "    -h | --help           This Help Message\n"
-         "    -1 | --run-once       Runs one iteration on the inverter, and then exits\n"
-         "    -c                    Optional path to the configuration file (default: ./inverter.conf)"
-         "    -d                    Additional debugging\n\n"
-         "RAW COMMAND EXAMPLES (see protocol manual for complete list):\n"
-         "Set output source priority  POP00     (Utility first)\n"
-         "                            POP01     (Solar first)\n"
-         "                            POP02     (SBU)\n"
-         "Set charger priority        PCP00     (Utility first)\n"
-         "                            PCP01     (Solar first)\n"
-         "                            PCP02     (Solar and utility)\n"
-         "                            PCP03     (Solar only)\n"
-         "Set other commands          PEa / PDa (Enable/disable buzzer)\n"
-         "                            PEb / PDb (Enable/disable overload bypass)\n"
-         "                            PEj / PDj (Enable/disable power saving)\n"
-         "                            PEu / PDu (Enable/disable overload restart)\n"
-         "                            PEx / PDx (Enable/disable backlight)\n\n";
+  std::cout <<
+"\nUSAGE:  ./inverter_poller <options>\n"
+"\nOPTIONS:"
+"\n    -r <raw-command>    Send 'raw' command to the inverter. Commands for a particular protocol could be found in \"documentation\" directory."
+"\n    --crc               Append CRC to the raw command."
+"\n    -h | --help         This Help Message."
+"\n    -1 | --run-once     Poll all inverter data once, then exit."
+"\n    -c                  Optional path to the configuration file (default: ./inverter.conf)."
+"\n    -d                  Additional debugging.\n";
 }
 
 const std::string& GetConfigurationFileName(const CommandLineArguments& cmd_args) {
@@ -138,9 +125,8 @@ void InitLogging(const CommandLineArguments& arguments) {
   spdlog::set_pattern("[%H:%M:%S.%e %^%l%$] %v");
   if (arguments.IsSet("-d")) {
     spdlog::set_level(spdlog::level::debug);
-    spdlog::debug("Debug logging enabled.");
   } else {
-    spdlog::set_level(spdlog::level::err);
+    spdlog::set_level(spdlog::level::info);
   }
 }
 
