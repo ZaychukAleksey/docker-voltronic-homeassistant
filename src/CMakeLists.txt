@@ -19,6 +19,7 @@ target_sources(inverter_poller
   protocols/pi30_protocol_adapter.cpp
 )
 
+target_link_libraries(inverter_poller PRIVATE spdlog::spdlog)
 target_link_options(inverter_poller PRIVATE -static-libgcc -static-libstdc++)
 
 target_include_directories(inverter_poller PRIVATE .)
