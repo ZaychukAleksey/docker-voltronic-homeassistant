@@ -1,3 +1,6 @@
 [submodule "submodules/spdlog"]
 	path = submodules/spdlog
 	url = https://github.com/gabime/spdlog.git
+[submodule "submodules/paho.mqtt.cpp"]
+	path = submodules/paho.mqtt.cpp
+	url = https://github.com/eclipse/paho.mqtt.cpp.git

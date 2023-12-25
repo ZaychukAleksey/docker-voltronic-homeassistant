@@ -17,9 +17,9 @@ services:
     # https://docs.docker.com/config/containers/start-containers-automatically/#use-a-restart-policy
     restart: always
 
-    # Mount "config" directory to the container so it will be accessible by inverter_poller.
+    # Mount config file to the container, so it will be accessible by inverter_poller.
     volumes:
-      - ./config/:/opt/config
+      - ./inverter.conf:/inverter.conf
 
     devices:
       # USB Port Mapping
@@ -51,4 +51,3 @@ services:
       #- /var/run/docker.sock:/var/run/docker.sock
 
     #command: --interval 500
-

@@ -1,6 +1,4 @@
 #include "pi18_protocol_adapter.hh"
-#include "spdlog/spdlog.h"
-
 
 namespace {
 
@@ -65,6 +63,16 @@ OutputMode GetOutputMode(int type) {
   }
 }
 
+constexpr DeviceMode GetDeviceMode(std::string_view mode) {
+  if (mode == "00") return DeviceMode::kPowerOn;
+  if (mode == "01") return DeviceMode::kStandby;
+  if (mode == "02") return DeviceMode::kBypass;
+  if (mode == "03") return DeviceMode::kBattery;
+  if (mode == "04") return DeviceMode::kFault;
+  if (mode == "05") return DeviceMode::kHybrid;
+  throw std::runtime_error(fmt::format("Unknown device mode: {}", mode));
+}
+
 }  // namespace
 
 
@@ -82,18 +90,12 @@ std::string Pi18ProtocolAdapter::GetGeneratedEnergyOfDayRaw(
   return Query(fmt::format("^P013ED{}{}{}", year, month, day), "^D011");
 }
 
-DeviceMode Pi18ProtocolAdapter::GetMode() {
+void Pi18ProtocolAdapter::GetMode() {
   const auto mode = GetWorkingModeRaw();
-  if (mode == "00") return DeviceMode::kPowerOn;
-  if (mode == "01") return DeviceMode::kStandby;
-  if (mode == "02") return DeviceMode::kBypass;
-  if (mode == "03") return DeviceMode::kBattery;
-  if (mode == "04") return DeviceMode::kFault;
-  if (mode == "05") return DeviceMode::kHybrid;
-  throw std::runtime_error(fmt::format("Unknown device mode: {}", mode));
+  mode_.Update(GetDeviceMode(mode));
 }
 
-RatedInformation Pi18ProtocolAdapter::GetRatedInfo() {
+void Pi18ProtocolAdapter::GetRatedInfo() {
   // Special case. According to the protocol, the length is 85. But my inverter returns 89.
   // Therefore I can't check it as a prefix and have to skip it here.
   auto response = GetRatedInformationRaw().substr(2);
@@ -112,36 +114,34 @@ RatedInformation Pi18ProtocolAdapter::GetRatedInfo() {
     throw std::runtime_error("Unexpected data in GetRatingInformation: " + response);
   }
 
-  RatedInformation result;
-  result.grid_rating_voltage = data[0] / 10.f;
-  result.grid_rating_current = data[1] / 10.f;
-  result.ac_output_rating_voltage = data[2] / 10.f;
-  result.ac_output_rating_frequency = data[3] / 10.f;
-  result.ac_output_rating_current = data[4] / 10.f;
-  result.ac_output_rating_apparent_power = data[5];
-  result.ac_output_rating_active_power = data[6];
-  result.battery_nominal_voltage = data[7] / 10.f;
-  result.battery_stop_discharging_voltage_with_grid = data[8] / 10.f;  // battery_recharge_voltage
-  result.battery_stop_charging_voltage_with_grid = data[9] / 10.f; // redischarge_voltage
-
-  result.battery_under_voltage = data[10] / 10.f;
-  result.battery_bulk_voltage = data[11] / 10.f;
-  result.battery_float_voltage = data[12] / 10.f;
-  result.battery_type = GetBatteryType(data[13]);
-  result.max_ac_charging_current = data[14];
-  result.max_charging_current = data[15];
-  result.input_voltage_range = GetInputVoltageRange(data[16]);
-  result.output_source_priority = GetOutputSourcePriority(data[17]);
-  result.charger_source_priority = ChargerPriority(data[18]);
-  result.parallel_max_num = data[19];
-  result.machine_type = GetMachineType(data[20]);
-  result.topology = GetTopology(data[21]);
-  result.output_mode = GetOutputMode(data[22]);
+  // If something is commented out, then it means we aren't interested in these sensors (at the moment).
+  // grid_rating_voltage = data[0] / 10.f;
+  // grid_rating_current = data[1] / 10.f;
+  // ac_output_rating_voltage = data[2] / 10.f;
+  // ac_output_rating_frequency = data[3] / 10.f;
+  // ac_output_rating_current  = data[4] / 10.f;
+  // ac_output_rating_apparent_power = data[5];
+  // ac_output_rating_active_power = data[6];
+  battery_nominal_voltage_.Update(data[7] / 10.f);
+  battery_stop_discharging_voltage_with_grid_.Update(data[8] / 10.f);  // battery_recharge_voltage
+  battery_stop_charging_voltage_with_grid_.Update(data[9] / 10.f); // redischarge_voltage
+  battery_under_voltage_.Update(data[10] / 10.f);
+  battery_bulk_voltage_.Update(data[11] / 10.f);
+  battery_float_voltage_.Update(data[12] / 10.f);
+  battery_type_.Update(GetBatteryType(data[13]));
+  // max_ac_charging_current = data[14];
+  // max_charging_current = data[15];
+  // input_voltage_range = GetInputVoltageRange(data[16]);
+  output_source_priority_.Update(GetOutputSourcePriority(data[17]));
+  charger_source_priority_.Update(ChargerPriority(data[18]));
+  // parallel_max_num = data[19];
+  // machine_type = GetMachineType(data[20]);
+  // topology = GetTopology(data[21]);
+  // output_mode = GetOutputMode(data[22]);
   // (Unused) data[23] - Solar power priority (0: Battery-Load-Utility, 1: Load-Battery-Utility)
   // (Unused) data[24] - MPPT string
   // (Unused) data[25] - ??? There is no such param according to the protocol, but my inverter
   // returns it.
-  return result;
 }
 
 static std::string_view GetFaultCodeDescription(int code) {
@@ -178,7 +178,7 @@ static std::string_view GetFaultCodeDescription(int code) {
   }
 }
 
-std::vector<std::string> Pi18ProtocolAdapter::GetWarnings() {
+void Pi18ProtocolAdapter::GetWarnings() {
   // Special case. According to the protocol, the length is 34 (probably an error, should be 37).
   // But my inverter returns 39.
   // Therefore, I can't check it as a prefix and have to skip it here.
@@ -215,10 +215,10 @@ std::vector<std::string> Pi18ProtocolAdapter::GetWarnings() {
   if (data[14]) result.emplace_back("MPPT2 overload warning");
   if (data[15]) result.emplace_back("Battery too low to charge for SCC1");
   if (data[16]) result.emplace_back("Battery too low to charge for SCC2");
-  return result;
+//  return result;
 }
 
-StatusInfo Pi18ProtocolAdapter::GetStatusInfo() {
+void Pi18ProtocolAdapter::GetStatusInfo() {
   auto str = GetGeneralStatusRaw();
 
   // Response according to the protocol:
@@ -233,28 +233,28 @@ StatusInfo Pi18ProtocolAdapter::GetStatusInfo() {
   if (n_args < std::size(data)) {
     throw std::runtime_error("Unexpected data in GetGeneralInfo: " + str);
   }
-  StatusInfo result;
-  result.grid_voltage = data[0] / 10.f;
-  result.grid_frequency = data[1] / 10.f;
-  result.ac_output_voltage = data[2] / 10.f;
-  result.ac_output_frequency = data[3] / 10.f;
-  result.ac_output_apparent_power = data[4];
-  result.ac_output_active_power = data[5];
-  result.output_load_percent = data[6];
 
-  result.battery_voltage = data[7] / 10.f;
-  result.battery_voltage_from_scc = data[8] / 10.f;
-  result.battery_voltage_from_scc2 = data[9] / 10.f;
-  result.battery_discharge_current = data[10];
-  result.battery_charging_current = data[11];
-  result.battery_capacity = data[12];
-  result.inverter_heat_sink_temperature = data[13];
-  result.mptt1_charger_temperature = data[14];
-  result.mptt2_charger_temperature = data[15];
-  result.pv_input_power = data[16];
-  result.pv2_input_power = data[17];
-  result.pv_input_voltage = data[18] / 10.f;
-  result.pv2_input_voltage = data[19] / 10.f;
+  grid_voltage_.Update(data[0] / 10.f);
+  grid_frequency_.Update(data[1] / 10.f);
+  ac_output_voltage_.Update(data[2] / 10.f);
+  ac_output_frequency_.Update(data[3] / 10.f);
+  ac_output_apparent_power_.Update(data[4]);
+  ac_output_active_power_.Update(data[5]);
+  output_load_percent_.Update(data[6]);
+
+  battery_voltage_.Update(data[7] / 10.f);
+  battery_voltage_from_scc_.Update(data[8] / 10.f);
+  battery_voltage_from_scc2_.Update(data[9] / 10.f);
+  battery_discharge_current_.Update(data[10]);
+  battery_charging_current_.Update(data[11]);
+  battery_capacity_.Update(data[12]);
+  inverter_heat_sink_temperature_.Update(data[13]);
+  mptt1_charger_temperature_.Update(data[14]);
+  mptt2_charger_temperature_.Update(data[15]);
+  pv_input_power_.Update(data[16]);
+  pv2_input_power_.Update(data[17]);
+  pv_input_voltage_.Update(data[18] / 10.f);
+  pv2_input_voltage_.Update(data[19] / 10.f);
   // data[20] - Setting value configuration state (0: Nothing changed, 1: Something changed)
   // data[21] - MPPT1 charger status (0: abnormal, 1: normal but not charged, 2: charging)
   // data[22] - MPPT2 charger status (0: abnormal, 1: normal but not charged, 2: charging)
@@ -263,15 +263,18 @@ StatusInfo Pi18ProtocolAdapter::GetStatusInfo() {
   // data[25] - DC/AC power direction (0: donothing, 1: AC-DC, 2: DC-AC)
   // data[26] - Line power direction (0: donothing, 1: input, 2: output)
   // data[27] - Local parallel ID (a: 0~(parallel number - 1))
-  return result;
+
+  // TODO: Total generated energy is temporarily disabled since at some point the inverter starts
+  //  sending rubbish with incorrect CRC.
+  // GetTotalGeneratedEnergy();
 }
 
-int Pi18ProtocolAdapter::GetTotalGeneratedEnergy() {
+void Pi18ProtocolAdapter::GetTotalGeneratedEnergy() {
   // Response: NNNNNNNN, unit: KWh
   auto str = GetTotalGeneratedEnergyRaw();
   int result;
   if(sscanf(str.c_str(), "%8d", &result) != 1) {
     throw std::runtime_error("Unexpected data in GetTotalGeneratedEnergy: " + str);
   }
-  return result;
+  total_energy_.Update(result);
 }

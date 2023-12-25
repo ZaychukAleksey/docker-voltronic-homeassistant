@@ -1,13 +1,16 @@
 This is a fork from [catalinbordan](https://github.com/catalinbordan/docker-voltronic-homeassistant) version (which, in turn, derives from [ned-kelly](https://github.com/ned-kelly/docker-voltronic-homeassistant) project). Please, check the origins for details.
 
 The following changes were made:
-- Supports PI18 and PI30 protocols.
+- Supports PI18 and PI30 protocols (each protocol exposes its own set of sensors in Home Assistant).
+- Reduced the size of the docker image.
+- Reduced the number of MQTT messages (only changed parameters are sent).
+- Polling interval is configurable.
 - Code simplified and rewritten on C++20 using [Google Style](https://google.github.io/styleguide/cppguide.html).
 - Enhancements in logging and error-handling.
-- Reduced the size of the docker image.
 
 <details><summary><b>This is WORK-IN-PROGRESS. Coming soon:</b></summary>
 
+- Raw commands are unsupported at the moment.
 - PI17 protocol support.
 - Protocol autodetection.
 - Interactive integration with HomeAssistant (change inverter parameters right from HomeAssistant).
@@ -60,19 +63,12 @@ It's pretty straightforward, just clone down the sources and set the configurati
 git clone https://github.com/ZaychukAleksey/voltronic-homeassistant.git /opt/voltronic-homeassistant
 cd /opt/voltronic-homeassistant
 
-# Configure inverter connection. See descriptions in inverter.conf.
-nano config/inverter.conf
+# Configure inverter connection and MQTT settings.
+# Please, read descriptions in inverter.conf.
+nano inverter.conf
 
-# Configure your MQTT server's IP/Host Name, Port, Credentials, HA discovery_prefix, and name of the
-# inverter that you want displayed in Home Assistant.
-# If your MQTT server does not need a username/password just leave these values empty.
-nano config/mqtt.json
-```
-
-Then, plug in your Serial or USB cable to the Inverter & stand up the container:
-
-```bash
-# Detached mode: Run containers in the background
+# Then, plug in your Serial or USB cable to the Inverter & stand up the container.
+#     --detach: detached mode, container is run in the background.
 docker-compose up --detach
 ```
 

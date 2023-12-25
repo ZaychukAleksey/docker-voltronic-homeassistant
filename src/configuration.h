@@ -24,7 +24,7 @@ class CommandLineArguments {
   std::vector<std::string> tokens_;
 };
 
-struct MqttSessings {
+struct MqttSettings {
   std::string server;
   int port;
   std::string user;
@@ -44,7 +44,8 @@ struct DeviceSettings {
 struct Settings {
   Protocol protocol;
   DeviceSettings device;
-  MqttSessings mqtt;
+  MqttSettings mqtt;
+  int polling_interval=5000;
 
   /// This allows you to modify the amperage in case the inverter is giving an incorrect
   /// reading compared to measurement tools.  Normally this will remain '1'
@@ -53,6 +54,10 @@ struct Settings {
   /// This allows you to modify the wattage in case the inverter is giving an incorrect
   /// reading compared to measurement tools.  Normally this will remain '1'
   float watt_factor = 1.0f;
-};
 
-[[nodiscard]] Settings LoadSettingsFromFile(const std::string& filename);
+  static const Settings& Instance();
+  static void LoadFromFile(const std::string& filename);
+
+ private:
+  Settings() = default;
+};

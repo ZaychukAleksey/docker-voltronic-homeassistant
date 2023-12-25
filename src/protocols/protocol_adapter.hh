@@ -3,27 +3,26 @@
 #include <memory>
 #include <vector>
 
-#include "../serial_port.hh"
-#include "device_mode.hh"
-#include "inverter_data.hh"
+#include "serial_port.hh"
 #include "protocol.hh"
-
-
-class SerialPort;
 
 
 class ProtocolAdapter {
  public:
   static std::unique_ptr<ProtocolAdapter> Get(Protocol, const SerialPort&);
 
-  [[nodiscard]] virtual DeviceMode GetMode() = 0;
-  [[nodiscard]] virtual std::vector<std::string> GetWarnings() = 0;
+  /// Information that doesn't change over time (various settings and presets), or changes only when
+  /// some relevant setting is directly changed by the user (i.e. by this application).
+  /// It can be retrieved once then updated quire rarely.
+  /// Rating information reflects inverter's nominal parameters. E.g. @a instant grid_voltage shows
+  /// the current grid voltage, it can fluctuate, whereas @a rated grid_rating_voltage is the
+  /// nominal voltage level that the inverter is designed to operate at.
+  virtual void GetRatedInfo() = 0;
 
-  /// @see descriptions for StatusInfo and RatedInformation.
-  [[nodiscard]] virtual StatusInfo GetStatusInfo() = 0;
-  [[nodiscard]] virtual RatedInformation GetRatedInfo() = 0;
-
-  [[nodiscard]] virtual int GetTotalGeneratedEnergy() = 0;
+  /// The current state of the inverter (volatile, instant metrics).
+  virtual void GetMode() = 0;
+  virtual void GetStatusInfo() = 0;
+  virtual void GetWarnings() = 0;
 
  protected:
   ProtocolAdapter(SerialPort&&) = delete;

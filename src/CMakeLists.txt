@@ -17,9 +17,16 @@ target_sources(inverter_poller
   protocols/protocol_adapter.cpp
   protocols/pi18_protocol_adapter.cpp
   protocols/pi30_protocol_adapter.cpp
+  mqtt/mqtt.cpp
+  mqtt/sensor.cpp
 )
 
-target_link_libraries(inverter_poller PRIVATE spdlog::spdlog)
+target_link_libraries(inverter_poller
+ PRIVATE
+  spdlog::spdlog
+  paho-mqttpp3
+)
+
 target_link_options(inverter_poller PRIVATE -static-libgcc -static-libstdc++)
 
 target_include_directories(inverter_poller PRIVATE .)

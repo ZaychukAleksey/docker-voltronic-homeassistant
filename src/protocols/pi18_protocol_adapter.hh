@@ -2,21 +2,21 @@
 
 #include "protocol_adapter.hh"
 
+#include "mqtt/sensor.hh"
 
 class Pi18ProtocolAdapter : public ProtocolAdapter {
  public:
   explicit Pi18ProtocolAdapter(const SerialPort& port) : ProtocolAdapter(port) {}
 
-  DeviceMode GetMode() override;
-  std::vector<std::string> GetWarnings() override;
+  void GetRatedInfo() override;
 
-  StatusInfo GetStatusInfo() override;
-  RatedInformation GetRatedInfo() override;
-
-  int GetTotalGeneratedEnergy() override;
+  void GetMode() override;
+  void GetStatusInfo() override;
+  void GetWarnings() override;
 
  protected:
   bool UseCrcInQueries() override { return true; }
+  void GetTotalGeneratedEnergy();
 
   std::string GetProtocolIdRaw() { return Query("^P005PI", "^D005"); }
   std::string GetCurrentTimeRaw() { return Query("^P005PI", "^D017"); }
@@ -40,4 +40,43 @@ class Pi18ProtocolAdapter : public ProtocolAdapter {
   // ...
   std::string GetAcChargeTimeBucketRaw() { return Query("^P005ACCT", "^D012"); }
   std::string GetAcSupplyLoadTimeBucketRaw() { return Query("^P005ACLT", "^D012"); }
+
+ private:
+  mqtt::ModeSelector mode_;
+
+  mqtt::BatteryNominalVoltage battery_nominal_voltage_;
+  mqtt::BatteryStopDischargingVoltageWithGrid battery_stop_discharging_voltage_with_grid_;
+  mqtt::BatteryStopChargingVoltageWithGrid battery_stop_charging_voltage_with_grid_;
+  mqtt::BatteryUnderVoltage battery_under_voltage_;
+  mqtt::BatteryBulkVoltage battery_bulk_voltage_;
+  mqtt::BatteryFloatVoltage battery_float_voltage_;
+  mqtt::BatteryType battery_type_;
+
+  mqtt::OutputSourcePrioritySelector output_source_priority_;
+  mqtt::ChargerSourcePrioritySelector charger_source_priority_;
+
+  // Instant metrics.
+  mqtt::GridVoltage grid_voltage_;
+  mqtt::GridFrequency grid_frequency_;
+  mqtt::OutputVoltage ac_output_voltage_;
+  mqtt::OutputFrequency ac_output_frequency_;
+  mqtt::OutputApparentPower ac_output_apparent_power_;
+  mqtt::OutputActivePower ac_output_active_power_;
+  mqtt::OutputLoadPercent output_load_percent_;
+
+  mqtt::BatteryVoltage battery_voltage_;
+  mqtt::BatteryVoltageFromScc battery_voltage_from_scc_;
+  mqtt::BatteryVoltageFromScc2 battery_voltage_from_scc2_;
+  mqtt::BatteryDischargeCurrent battery_discharge_current_;
+  mqtt::BatteryChargeCurrent battery_charging_current_;
+  mqtt::BatteryCapacity battery_capacity_;
+
+  mqtt::HeatsinkTemperature inverter_heat_sink_temperature_;
+  mqtt::Mptt1ChargerTemperature mptt1_charger_temperature_;
+  mqtt::Mptt2ChargerTemperature mptt2_charger_temperature_;
+  mqtt::PvWatts pv_input_power_;
+  mqtt::PvWatts2 pv2_input_power_;
+  mqtt::PvVoltage pv_input_voltage_;
+  mqtt::Pv2Voltage pv2_input_voltage_;
+  mqtt::PvTotalGeneratedEnergy total_energy_;
 };
