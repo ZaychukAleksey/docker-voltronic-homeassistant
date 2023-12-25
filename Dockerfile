@@ -7,7 +7,10 @@
 # docker build --progress=plain -t voltronic .
 #
 # NOTE: if you're trying to run the image without docker-compose, when you should mount "config"
-# directory: docker run -it -v <absolute_path>/inverter.conf:/inverter.conf voltronic
+# directory: docker run -itv <absolute_path>/inverter.conf:/inverter.conf voltronic
+#
+# To get into the container itsef (e.g. for debugging purposes):
+# docker run -itv <absolute_path>/inverter.conf:/inverter.conf --entrypoint bash voltronic
 #
 # To build multiarch image and push it into the repo:
 # docker buildx build --platform=linux/amd64,linux/arm/v6,linux/arm/v7,linux/arm64,linux/386 -t zaychukaleksey/ha-voltronic-mqtt:latest --push .
@@ -17,13 +20,13 @@
 FROM alpine:latest AS build_image
 
 # Install required packages to build the inverter poller binary.
-RUN apk update && apk add --no-cache g++ make cmake
+RUN apk update && apk add --no-cache g++ make cmake openssl-dev
 
 # Copy sources.
-COPY sources/inverter-cli /build/
+COPY . /build/
 
 # Build the binary
-RUN cd /build && cmake -DCMAKE_BUILD_TYPE=Release . && make -j2
+RUN cd /build && cmake -DCMAKE_BUILD_TYPE=Release . && make -j8
 
 
 FROM alpine:latest
@@ -32,6 +35,6 @@ FROM alpine:latest
 RUN apk update && apk add --no-cache bash
 
 # Copy inverter_poller binary from the build image into our result image.
-COPY --from=build_image /build/inverter_poller /
+COPY --from=build_image /build/src/inverter_poller /
 
 ENTRYPOINT ["/inverter_poller"]

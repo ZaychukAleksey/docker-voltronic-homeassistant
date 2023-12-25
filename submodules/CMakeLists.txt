@@ -1,7 +1,7 @@
 # MQTT C++ client library
 # https://github.com/eclipse/paho.mqtt.cpp
 option(PAHO_BUILD_STATIC "" ON)
-#option(PAHO_WITH_SSL "" OFF)
+option(PAHO_BUILD_SHARED "" OFF)
 option(PAHO_WITH_MQTT_C "" ON)
 add_subdirectory(paho.mqtt.cpp)
 

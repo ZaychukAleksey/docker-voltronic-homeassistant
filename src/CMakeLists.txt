@@ -24,7 +24,8 @@ target_sources(inverter_poller
 target_link_libraries(inverter_poller
  PRIVATE
   spdlog::spdlog
-  paho-mqttpp3
+  paho-mqtt3as-static
+  paho-mqttpp3-static
 )
 
 target_link_options(inverter_poller PRIVATE -static-libgcc -static-libstdc++)
