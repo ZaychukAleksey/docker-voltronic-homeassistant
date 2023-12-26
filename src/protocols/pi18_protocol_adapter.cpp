@@ -133,7 +133,7 @@ void Pi18ProtocolAdapter::GetRatedInfo() {
   // max_charging_current = data[15];
   // input_voltage_range = GetInputVoltageRange(data[16]);
   output_source_priority_.Update(GetOutputSourcePriority(data[17]));
-  charger_source_priority_.Update(ChargerPriority(data[18]));
+  charger_source_priority_.Update(GetChargerPriority(data[18]));
   // parallel_max_num = data[19];
   // machine_type = GetMachineType(data[20]);
   // topology = GetTopology(data[21]);
