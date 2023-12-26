@@ -10,7 +10,7 @@
 # directory: docker run -itv <absolute_path>/inverter.conf:/inverter.conf voltronic
 #
 # To get into the container itsef (e.g. for debugging purposes):
-# docker run -itv <absolute_path>/inverter.conf:/inverter.conf --entrypoint bash voltronic
+# docker run -itv <absolute_path>/inverter.conf:/inverter.conf --entrypoint sh voltronic
 #
 # To build multiarch image and push it into the repo:
 # docker buildx build --platform=linux/amd64,linux/arm/v6,linux/arm/v7,linux/arm64,linux/386 -t zaychukaleksey/ha-voltronic-mqtt:latest --push .
@@ -30,9 +30,6 @@ RUN cd /build && cmake -DCMAKE_BUILD_TYPE=Release . && make -j8
 
 
 FROM alpine:latest
-
-# Install bash. Just to be able to go "inside" the container later.
-RUN apk update && apk add --no-cache bash
 
 # Copy inverter_poller binary from the build image into our result image.
 COPY --from=build_image /build/src/inverter_poller /
