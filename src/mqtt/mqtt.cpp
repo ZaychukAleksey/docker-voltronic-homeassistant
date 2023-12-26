@@ -52,5 +52,5 @@ std::string_view MqttClient::GetPrefix() {
 
 void MqttClient::Publish(const std::string& topic, std::string_view payload, bool retain) {
   spdlog::debug("Publish to {}, payload: {}", topic, payload);
-//  client_.publish(topic, payload.data(), payload.size(), 1, retain);
+  client_.publish(topic, payload.data(), payload.size(), 1, retain);
 }
