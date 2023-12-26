@@ -14,7 +14,9 @@ class MqttClient {
   ~MqttClient();
 
   /// @param retain Whether the message should be retained by the broker.
-  void Publish(const std::string& sub_topic, std::string_view payload, bool retain = false);
+  /// @param qos https://www.hivemq.com/blog/mqtt-essentials-part-6-mqtt-quality-of-service-levels/
+  void Publish(const std::string& sub_topic, std::string_view payload,
+               int qos = 1, bool retain = false);
   static std::string_view GetPrefix();
 
  private:

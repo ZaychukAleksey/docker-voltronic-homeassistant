@@ -101,7 +101,7 @@ void Sensor::Update(Value new_value) {
 
     const std::string value_str = ValueToString(value_);
     spdlog::info("{}: {}", name_, value_str);
-    MqttClient::Instance().Publish(StateTopic(), value_str);
+    MqttClient::Instance().Publish(StateTopic(), value_str, 0);
   }
 }
 
@@ -136,7 +136,7 @@ void Sensor::Register() {
   }
   payload += "\n}";
 
-  MqttClient::Instance().Publish(std::format("{}/config", state_topic), payload, true);
+  MqttClient::Instance().Publish(std::format("{}/config", state_topic), payload, 1, true);
 }
 
 }  // namespace mqtt
