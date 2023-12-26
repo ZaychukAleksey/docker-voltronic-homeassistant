@@ -92,16 +92,21 @@ std::string Sensor::StateTopic() const {
 
 void Sensor::Update(Value new_value) {
   if (new_value != value_) {
+    bool retain = false;
     if (!registered_) {
       Register();
       registered_ = true;
+      // The very first sensor update should be retained, otherwise, after Register() Home Assistant
+      // often has no enough time to create sensor object and subscribe to its topic before we send
+      // the first initial value (which is often ignored if not retained).
+      retain = true;
     }
 
     value_ = new_value;
 
     const std::string value_str = ValueToString(value_);
     spdlog::info("{}: {}", name_, value_str);
-    MqttClient::Instance().Publish(StateTopic(), value_str, 0);
+    MqttClient::Instance().Publish(StateTopic(), value_str, 0, retain);
   }
 }
 
