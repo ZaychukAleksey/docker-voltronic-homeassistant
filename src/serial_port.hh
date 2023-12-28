@@ -19,7 +19,7 @@ class SerialPort {
 
   /// Receive data from device and check its CRC.
   /// @returns a reply from the device, excluding CRC and carriage return (<cr>).
-  std::string Receive() const;
+  std::string Receive(int timeout_in_seconds = 5) const;
 
   /// Combination of Send() and Receive() with checking CRC and retrying on CRC mismatch.
   /// @param query - see Send().

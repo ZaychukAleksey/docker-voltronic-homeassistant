@@ -96,6 +96,11 @@ SerialPort::SerialPort(std::string_view device) {
     throw std::runtime_error(fmt::format("Error {} from tcsetattr: {}", errno, strerror(errno)));
   }
   tcflush(file_descriptor_, TCOFLUSH);
+  // Read all available data to "clear" possible garbage leftover.
+  try {
+    Receive(1);
+  } catch (const TimeoutException& /* ignored */) {
+  } catch (const CrcMismatchException& /* ignored */) {}
 }
 
 SerialPort::~SerialPort() {
@@ -127,10 +132,10 @@ void SerialPort::Send(std::string_view query, bool with_crc) const {
   }
 }
 
-std::string SerialPort::Receive() const {
+std::string SerialPort::Receive(int timeout_in_seconds) const {
   // We can't read or wait for response data infinitely. Use a timeout.
   // TODO use VMIN = 0, VTIME > 0 in port settings.
-  const time_t deadline_time = CurrentTimeInSeconds() + 5;
+  const time_t deadline_time = CurrentTimeInSeconds() + timeout_in_seconds;
 
   char buffer[1024];
   int bytes_read = 0;
