@@ -2,6 +2,7 @@
 
 #include <string_view>
 #include <variant>
+#include <vector>
 
 #include "protocols/types.hh"
 
@@ -33,14 +34,21 @@ class Sensor {
       : name_(name), device_class_(device_class) {}
 
   void Update(Value new_value);
-  std::string StateTopic() const;
+
+ protected:
+  std::string SensorTopicRoot() const;
+  std::string StateTopic() const { return std::format("{}/state", SensorTopicRoot()); }
+
+  /// Sensor values will be sent to MQTT only when something changes.
+  constexpr virtual bool UpdateWhenChangedOnly() const { return true; }
 
  private:
   // https://www.home-assistant.io/integrations/mqtt/#mqtt-discovery
   void Register();
 
-  virtual std::string_view Type() const { return "sensor"; }
-  virtual std::string_view Icon() const { return ""; }
+  constexpr virtual std::string_view Type() const { return "sensor"; }
+  constexpr virtual std::string_view Icon() const { return ""; }
+  constexpr virtual std::string AdditionalRegistrationOptions() const { return ""; }
 
 
   std::string_view name_;
@@ -224,14 +232,29 @@ struct PvTotalGeneratedEnergy : public Sensor {
 ///=================================================================================================
 // TODO: make these https://www.home-assistant.io/integrations/select.mqtt/
 
+
+/// https://www.home-assistant.io/integrations/select.mqtt/
+class Selector : public Sensor {
+ protected:
+  constexpr Selector(std::string_view name, std::vector<std::string_view> selectable_options)
+      : Sensor(name), selectable_options_(std::move(selectable_options)) {}
+
+  constexpr std::string_view Type() const override { return "select"; }
+  std::string AdditionalRegistrationOptions() const override;
+  constexpr bool UpdateWhenChangedOnly() const override { return false; }
+
+  std::vector<std::string_view> selectable_options_;
+};
+
 struct ModeSelector : public Sensor { constexpr ModeSelector() : Sensor("Mode") {} };
 
 struct OutputSourcePrioritySelector : public Sensor {
   constexpr OutputSourcePrioritySelector() : Sensor("Output_source_priority") {}
 };
 
-struct ChargerSourcePrioritySelector : public Sensor {
-  constexpr ChargerSourcePrioritySelector() : Sensor("Charger_source_priority") {}
+struct ChargerSourcePrioritySelector : public Selector {
+  constexpr ChargerSourcePrioritySelector(std::vector<std::string_view> selectable_options)
+      : Selector("Charger_source_priority", std::move(selectable_options)) {}
 };
 
 ///=================================================================================================

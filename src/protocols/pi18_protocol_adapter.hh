@@ -6,7 +6,7 @@
 
 class Pi18ProtocolAdapter : public ProtocolAdapter {
  public:
-  explicit Pi18ProtocolAdapter(const SerialPort& port) : ProtocolAdapter(port) {}
+  explicit Pi18ProtocolAdapter(const SerialPort&);
 
   void GetRatedInfo() override;
 

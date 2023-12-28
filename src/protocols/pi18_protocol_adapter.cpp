@@ -78,6 +78,12 @@ constexpr DeviceMode GetDeviceMode(std::string_view mode) {
 }  // namespace
 
 
+Pi18ProtocolAdapter::Pi18ProtocolAdapter(const SerialPort& port)
+    : ProtocolAdapter(port),
+      charger_source_priority_({ToString(ChargerPriority::kSolarFirst),
+                                ToString(ChargerPriority::kSolarAndUtility),
+                                ToString(ChargerPriority::kOnlySolar)}) {}
+
 std::string Pi18ProtocolAdapter::GetGeneratedEnergyOfYearRaw(std::string_view year) {
   return Query(std::format("^P009EY{}", year), "^D011");
 }

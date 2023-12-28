@@ -84,31 +84,46 @@ std::string ValueToString(const Sensor::Value& value) {
   throw std::runtime_error("New value type detected");
 }
 
+std::string OptionsToString(const std::vector<std::string_view>& options) {
+  std::string result;
+  for (auto& option : options) {
+    if (!result.empty()) {
+      result += ',';
+    }
+    result += '"';
+    result.append(option);
+    result += '"';
+  }
+  return result;
+}
+
 }  // namespace
 
-std::string Sensor::StateTopic() const {
+std::string Sensor::SensorTopicRoot() const {
   const auto mqtt_prefix = MqttClient::GetPrefix();
   return std::format("{}/{}/{}/{}", mqtt_prefix, Type(), GetDeviceId(), name_);
 }
 
 void Sensor::Update(Value new_value) {
-  if (new_value != value_) {
-    bool retain = false;
-    if (!registered_) {
-      Register();
-      registered_ = true;
-      // The very first sensor update should be retained, otherwise, after Register() Home Assistant
-      // often has no enough time to create sensor object and subscribe to its topic before we send
-      // the first initial value (which is often ignored if not retained).
-      retain = true;
-    }
-
-    value_ = new_value;
-
-    const std::string value_str = ValueToString(value_);
-    spdlog::info("{}: {}", name_, value_str);
-    MqttClient::Instance().Publish(StateTopic(), value_str, 0, retain);
+  if (new_value == value_) {
+    if (UpdateWhenChangedOnly()) return;
   }
+
+  bool retain = false;
+  if (!registered_) {
+    Register();
+    registered_ = true;
+    // The very first sensor update should be retained, otherwise, after Register() Home Assistant
+    // often has no enough time to create sensor object and subscribe to its topic before we send
+    // the first initial value (so it's often ignored).
+    retain = true;
+  }
+
+  value_ = new_value;
+
+  const std::string value_str = ValueToString(value_);
+  spdlog::info("{}: {}", name_, value_str);
+  MqttClient::Instance().Publish(StateTopic(), value_str, 0, retain);
 }
 
 void Sensor::Register() {
@@ -120,29 +135,36 @@ void Sensor::Register() {
     // If NOT "None", the sensor is assumed to be numerical and will be displayed as a line-chart in
     // the frontend instead of as discrete values.
     // https://developers.home-assistant.io/docs/core/entity/sensor/#available-state-classes
-    payload.append(",\n\t\"state_class\":\"measurement\"");
+    payload.append(",\n\t").append(R"("state_class":"measurement")");
   }
 
   if (auto icon = Icon(); !icon.empty()) {
-    payload.append(std::format(",\n\t\"icon\":\"mdi:{}\"", icon));
+    payload.append(",\n\t").append(std::format(R"("icon":"mdi:{}")", icon));
   }
   std::string control_name(name_);
   std::ranges::replace(control_name, '_', ' ');  // replace underscores with whitespaces
-  payload.append(std::format(",\n\t\"name\":\"{}\"", control_name));
-
-  auto state_topic = StateTopic();
-  payload.append(std::format(",\n\t\"state_topic\":\"{}\"", state_topic));
+  payload.append(",\n\t").append(std::format(R"("name":"{}")", control_name));
+  payload.append(",\n\t").append(std::format(R"("state_topic":"{}")", StateTopic()));
 
   auto unique_id = std::format("{}_{}", Settings::Instance().device.serial_number, name_);
-  payload.append(std::format(",\n\t\"unique_id\":\"{}\"", unique_id));
+  payload.append(",\n\t").append(std::format(R"("unique_id":"{}")", unique_id));
 
   const auto unit_of_measurement = GetMeasurement(device_class_);
   if (!unit_of_measurement.empty()) {
-    payload.append(std::format(",\n\t\"unit_of_measurement\":\"{}\"", unit_of_measurement));
+    payload.append(",\n\t").append(std::format(R"("unit_of_measurement":"{}")", unit_of_measurement));
+  }
+  const auto additional_info = AdditionalRegistrationOptions();
+  if (!additional_info.empty()) {
+    payload.append(std::format(",\n\t{}", additional_info));
   }
   payload += "\n}";
 
-  MqttClient::Instance().Publish(std::format("{}/config", state_topic), payload, 1, true);
+  MqttClient::Instance().Publish(std::format("{}/config", SensorTopicRoot()), payload, 1, true);
+}
+
+std::string Selector::AdditionalRegistrationOptions() const {
+  return std::format(R"("command_topic":"{}", "options":[{}])", StateTopic(),
+                     OptionsToString(selectable_options_));
 }
 
 }  // namespace mqtt
