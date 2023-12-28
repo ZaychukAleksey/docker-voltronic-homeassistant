@@ -1,6 +1,6 @@
 #pragma once
 
-#include "spdlog/spdlog.h"
+#include <format>
 
 enum class DeviceMode : char {
   kPowerOn,             //  Power on mode
@@ -18,7 +18,7 @@ enum class DeviceMode : char {
   kEco,                 //  ECO mode
 };
 
-inline std::string_view DeviceModeToString(DeviceMode mode) {
+constexpr std::string_view ToString(DeviceMode mode) {
   switch (mode) {
     case DeviceMode::kPowerOn: return "Power on";
     case DeviceMode::kStandby: return "Standby";
@@ -34,7 +34,7 @@ inline std::string_view DeviceModeToString(DeviceMode mode) {
     case DeviceMode::kCharge: return "Charge";
     case DeviceMode::kEco: return "ECO";
   }
-  throw std::runtime_error(fmt::format("Unknown DeviceMode: {}", (int) mode));
+  throw std::runtime_error(std::format("Unknown DeviceMode: {}", (int) mode));
 }
 
 enum class BatteryType : char {
@@ -45,7 +45,7 @@ enum class BatteryType : char {
   kSH,              //  SH (5048MG & 5048MGX Remote Panel Communication Protocol)
 };
 
-inline std::string_view BatteryTypeToString(BatteryType type) {
+constexpr std::string_view ToString(BatteryType type) {
   switch (type) {
     case BatteryType::kAgm: return "AGM";
     case BatteryType::kFlooded: return "Flooded";
@@ -53,7 +53,7 @@ inline std::string_view BatteryTypeToString(BatteryType type) {
     case BatteryType::kPYL: return "PYL";
     case BatteryType::kSH: return "SH";
   }
-  throw std::runtime_error(fmt::format("Unknown BatteryType: {}", (int) type));
+  throw std::runtime_error(std::format("Unknown BatteryType: {}", (int) type));
 }
 
 enum class ChargerPriority : char {
@@ -63,14 +63,14 @@ enum class ChargerPriority : char {
   kOnlySolar,       //  Only solar charging permitted
 };
 
-inline std::string_view ChargerPriorityToString(ChargerPriority priority) {
+constexpr std::string_view ToString(ChargerPriority priority) {
   switch (priority) {
     case ChargerPriority::kUtilityFirst: return "Utility";
     case ChargerPriority::kSolarFirst: return "Solar";
     case ChargerPriority::kSolarAndUtility: return "Solar+Utility";
     case ChargerPriority::kOnlySolar: return "Solar only";
   }
-  throw std::runtime_error(fmt::format("Unknown ChargerPriority: {}", (int) priority));
+  throw std::runtime_error(std::format("Unknown ChargerPriority: {}", (int) priority));
 }
 
 enum class OutputSourcePriority : char {
@@ -79,13 +79,13 @@ enum class OutputSourcePriority : char {
   kSolarBatteryUtility,       //  Solar -> Battery -> Utility
 };
 
-inline std::string_view OutputSourcePriorityToString(OutputSourcePriority priority) {
+constexpr std::string_view ToString(OutputSourcePriority priority) {
   switch (priority) {
     case OutputSourcePriority::kUtility: return "Utility";
     case OutputSourcePriority::kSolarUtilityBattery: return "Solar->Utility->Battery";
     case OutputSourcePriority::kSolarBatteryUtility: return "Solar->Battery->Utility";
   }
-  throw std::runtime_error(fmt::format("Unknown OutputSourcePriority: {}", (int) priority));
+  throw std::runtime_error(std::format("Unknown OutputSourcePriority: {}", (int) priority));
 }
 
 enum class OutputMode : char {

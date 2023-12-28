@@ -1,5 +1,7 @@
 #include "pi30_protocol_adapter.hh"
 
+#include <format>
+
 #include "exceptions.h"
 
 
@@ -25,7 +27,7 @@ BatteryType GetBatteryType(int type) {
     case 2: return BatteryType::kUser;
     case 3: return BatteryType::kPYL;
     case 4: return BatteryType::kSH;
-    default: throw std::runtime_error(fmt::format("Unknown battery type: {}", type));
+    default: throw std::runtime_error(std::format("Unknown battery type: {}", type));
   }
 }
 
@@ -33,7 +35,7 @@ InputVoltageRange GetInputVoltageRange(int type) {
   switch (type) {
     case 0: return InputVoltageRange::kAppliance;
     case 1: return InputVoltageRange::kUps;
-    default: throw std::runtime_error(fmt::format("Unknown InputVoltageRange: {}", type));
+    default: throw std::runtime_error(std::format("Unknown InputVoltageRange: {}", type));
   }
 }
 
@@ -42,7 +44,7 @@ OutputSourcePriority GetOutputSourcePriority(int type) {
     case 0: return OutputSourcePriority::kUtility;
     case 1: return OutputSourcePriority::kSolarUtilityBattery;
     case 2: return OutputSourcePriority::kSolarBatteryUtility;
-    default: throw std::runtime_error(fmt::format("Unknown OutputSourcePriority: {}", type));
+    default: throw std::runtime_error(std::format("Unknown OutputSourcePriority: {}", type));
   }
 }
 
@@ -52,7 +54,7 @@ ChargerPriority GetChargerPriority(int type) {
     case 1: return ChargerPriority::kSolarFirst;
     case 2: return ChargerPriority::kSolarAndUtility;
     case 3: return ChargerPriority::kOnlySolar;
-    default: throw std::runtime_error(fmt::format("Unknown ChargerPriority: {}", type));
+    default: throw std::runtime_error(std::format("Unknown ChargerPriority: {}", type));
   }
 }
 
@@ -60,7 +62,7 @@ MachineType GetMachineType(int type) {
   switch (type) {
     case 0: return MachineType::kGridTie;
     case 1: return MachineType::kGridTie;
-    default: throw std::runtime_error(fmt::format("Unknown MachineType: {}", type));
+    default: throw std::runtime_error(std::format("Unknown MachineType: {}", type));
   }
 }
 
@@ -68,7 +70,7 @@ Topology GetTopology(int type) {
   switch (type) {
     case 0: return Topology::kTransformless;
     case 1: return Topology::kTransformer;
-    default: throw std::runtime_error(fmt::format("Unknown Topology: {}", type));
+    default: throw std::runtime_error(std::format("Unknown Topology: {}", type));
   }
 }
 
@@ -79,7 +81,7 @@ OutputMode GetOutputMode(int type) {
     case 2: return OutputMode::kPhase1Of3;
     case 3: return OutputMode::kPhase2Of3;
     case 4: return OutputMode::kPhase3Of3;
-    default: throw std::runtime_error(fmt::format("Unknown OutputMode: {}", type));
+    default: throw std::runtime_error(std::format("Unknown OutputMode: {}", type));
   }
 }
 
@@ -96,7 +98,7 @@ constexpr DeviceMode GetDeviceMode(std::string_view mode) {
   if (mode == "G") return DeviceMode::kGrid;
   if (mode == "C") return DeviceMode::kCharge;
   if (mode == "E") return DeviceMode::kEco;
-  throw std::runtime_error(fmt::format("Unknown device mode: {}", mode));
+  throw std::runtime_error(std::format("Unknown device mode: {}", mode));
 }
 
 }  // namespace

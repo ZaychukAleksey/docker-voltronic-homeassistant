@@ -1,6 +1,7 @@
 #include "sensor.hh"
 #include "mqtt.hh"
 #include "configuration.h"
+#include "spdlog/spdlog.h"
 
 #include <format>
 #include <ranges>
@@ -69,16 +70,16 @@ std::string ValueToString(const Sensor::Value& value) {
     return std::format("{}", std::get<float>(value));
   }
   if (std::holds_alternative<DeviceMode>(value)) {
-    return std::string(DeviceModeToString(std::get<DeviceMode>(value)));
+    return std::string(ToString(std::get<DeviceMode>(value)));
   }
   if (std::holds_alternative<::BatteryType>(value)) {
-    return std::string(BatteryTypeToString(std::get<::BatteryType>(value)));
+    return std::string(ToString(std::get<::BatteryType>(value)));
   }
   if (std::holds_alternative<ChargerPriority>(value)) {
-    return std::string(ChargerPriorityToString(std::get<::ChargerPriority>(value)));
+    return std::string(ToString(std::get<::ChargerPriority>(value)));
   }
   if (std::holds_alternative<OutputSourcePriority>(value)) {
-    return std::string(OutputSourcePriorityToString(std::get<::OutputSourcePriority>(value)));
+    return std::string(ToString(std::get<::OutputSourcePriority>(value)));
   }
   throw std::runtime_error("New value type detected");
 }

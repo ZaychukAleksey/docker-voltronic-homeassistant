@@ -11,7 +11,7 @@ Protocol ProtocolFromString(std::string_view s) {
   throw UnsupportedProtocolException(s);
 }
 
-std::string_view ProtocolToString(Protocol protocol) {
+std::string_view ToString(Protocol protocol) {
   switch (protocol) {
     case Protocol::PI17: return "PI17";
     case Protocol::PI18: return "PI18";

@@ -1,5 +1,7 @@
 #include "pi18_protocol_adapter.hh"
 
+#include <format>
+
 namespace {
 
 BatteryType GetBatteryType(int type) {
@@ -7,7 +9,7 @@ BatteryType GetBatteryType(int type) {
     case 0: return BatteryType::kAgm;
     case 1: return BatteryType::kFlooded;
     case 2: return BatteryType::kUser;
-    default: throw std::runtime_error(fmt::format("Unknown battery type: {}", type));
+    default: throw std::runtime_error(std::format("Unknown battery type: {}", type));
   }
 }
 
@@ -15,7 +17,7 @@ InputVoltageRange GetInputVoltageRange(int type) {
   switch (type) {
     case 0: return InputVoltageRange::kAppliance;
     case 1: return InputVoltageRange::kUps;
-    default: throw std::runtime_error(fmt::format("Unknown InputVoltageRange: {}", type));
+    default: throw std::runtime_error(std::format("Unknown InputVoltageRange: {}", type));
   }
 }
 
@@ -23,7 +25,7 @@ OutputSourcePriority GetOutputSourcePriority(int type) {
   switch (type) {
     case 0: return OutputSourcePriority::kSolarUtilityBattery;
     case 1: return OutputSourcePriority::kSolarBatteryUtility;
-    default: throw std::runtime_error(fmt::format("Unknown OutputSourcePriority: {}", type));
+    default: throw std::runtime_error(std::format("Unknown OutputSourcePriority: {}", type));
   }
 }
 
@@ -32,7 +34,7 @@ ChargerPriority GetChargerPriority(int type) {
     case 0: return ChargerPriority::kSolarFirst;
     case 1: return ChargerPriority::kSolarAndUtility;
     case 2: return ChargerPriority::kOnlySolar;
-    default: throw std::runtime_error(fmt::format("Unknown ChargerPriority: {}", type));
+    default: throw std::runtime_error(std::format("Unknown ChargerPriority: {}", type));
   }
 }
 
@@ -40,7 +42,7 @@ MachineType GetMachineType(int type) {
   switch (type) {
     case 0: return MachineType::kOffGrid;
     case 1: return MachineType::kGridTie;
-    default: throw std::runtime_error(fmt::format("Unknown MachineType: {}", type));
+    default: throw std::runtime_error(std::format("Unknown MachineType: {}", type));
   }
 }
 
@@ -48,7 +50,7 @@ Topology GetTopology(int type) {
   switch (type) {
     case 0: return Topology::kTransformless;
     case 1: return Topology::kTransformer;
-    default: throw std::runtime_error(fmt::format("Unknown Topology: {}", type));
+    default: throw std::runtime_error(std::format("Unknown Topology: {}", type));
   }
 }
 
@@ -59,7 +61,7 @@ OutputMode GetOutputMode(int type) {
     case 2: return OutputMode::kPhase1Of3;
     case 3: return OutputMode::kPhase2Of3;
     case 4: return OutputMode::kPhase3Of3;
-    default: throw std::runtime_error(fmt::format("Unknown OutputMode: {}", type));
+    default: throw std::runtime_error(std::format("Unknown OutputMode: {}", type));
   }
 }
 
@@ -70,24 +72,24 @@ constexpr DeviceMode GetDeviceMode(std::string_view mode) {
   if (mode == "03") return DeviceMode::kBattery;
   if (mode == "04") return DeviceMode::kFault;
   if (mode == "05") return DeviceMode::kHybrid;
-  throw std::runtime_error(fmt::format("Unknown device mode: {}", mode));
+  throw std::runtime_error(std::format("Unknown device mode: {}", mode));
 }
 
 }  // namespace
 
 
 std::string Pi18ProtocolAdapter::GetGeneratedEnergyOfYearRaw(std::string_view year) {
-  return Query(fmt::format("^P009EY{}", year), "^D011");
+  return Query(std::format("^P009EY{}", year), "^D011");
 }
 
 std::string Pi18ProtocolAdapter::GetGeneratedEnergyOfMonthRaw(std::string_view year,
                                                               std::string_view month) {
-  return Query(fmt::format("^P011EM{}{}", year, month), "^D011");
+  return Query(std::format("^P011EM{}{}", year, month), "^D011");
 }
 
 std::string Pi18ProtocolAdapter::GetGeneratedEnergyOfDayRaw(
     std::string_view year, std::string_view month, std::string_view day) {
-  return Query(fmt::format("^P013ED{}{}{}", year, month, day), "^D011");
+  return Query(std::format("^P013ED{}{}{}", year, month, day), "^D011");
 }
 
 void Pi18ProtocolAdapter::GetMode() {
@@ -174,7 +176,7 @@ static std::string_view GetFaultCodeDescription(int code) {
     case 84: return "Parallel Line voltage or frequency detect different";
     case 85: return "Parallel Line input current unbalanced";
     case 86: return "Parallel output setting different";
-    default: throw std::runtime_error(fmt::format("Unknown fault code: {}", code));
+    default: throw std::runtime_error(std::format("Unknown fault code: {}", code));
   }
 }
 

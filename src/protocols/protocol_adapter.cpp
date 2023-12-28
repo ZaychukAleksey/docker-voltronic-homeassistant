@@ -1,5 +1,7 @@
 #include "protocol_adapter.hh"
 
+#include <format>
+
 #include "../exceptions.h"
 #include "pi18_protocol_adapter.hh"
 #include "pi30_protocol_adapter.hh"
@@ -9,7 +11,7 @@ namespace {
 void CheckStartsWith(std::string_view response, std::string_view expected_prefix) {
   if (!response.starts_with(expected_prefix)) {
     throw std::runtime_error(
-        fmt::format("Response '{}' is expected to start with '{}'", response, expected_prefix));
+        std::format("Response '{}' is expected to start with '{}'", response, expected_prefix));
   }
 }
 

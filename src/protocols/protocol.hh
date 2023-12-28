@@ -9,4 +9,4 @@ enum class Protocol : char {
 };
 
 Protocol ProtocolFromString(std::string_view);
-std::string_view ProtocolToString(Protocol);
+std::string_view ToString(Protocol);
