@@ -105,10 +105,10 @@ constexpr DeviceMode GetDeviceMode(std::string_view mode) {
 
 Pi30ProtocolAdapter::Pi30ProtocolAdapter(const SerialPort& port)
     : ProtocolAdapter(port),
-      charger_source_priority_({ToString(ChargerPriority::kUtilityFirst),
-                                ToString(ChargerPriority::kSolarFirst),
-                                ToString(ChargerPriority::kSolarAndUtility),
-                                ToString(ChargerPriority::kOnlySolar)}) {}
+      charger_source_priority_({ChargerPriority::kUtilityFirst,
+                                ChargerPriority::kSolarFirst,
+                                ChargerPriority::kSolarAndUtility,
+                                ChargerPriority::kOnlySolar}) {}
 
 void Pi30ProtocolAdapter::GetMode() {
   const auto mode = GetDeviceModeRaw();

@@ -243,7 +243,7 @@ class Selector : public Sensor {
   std::string AdditionalRegistrationOptions() const override;
   constexpr bool UpdateWhenChangedOnly() const override { return false; }
 
-  std::vector<std::string_view> selectable_options_;
+  const std::vector<std::string_view> selectable_options_;
 };
 
 struct ModeSelector : public Sensor { constexpr ModeSelector() : Sensor("Mode") {} };
@@ -253,8 +253,7 @@ struct OutputSourcePrioritySelector : public Sensor {
 };
 
 struct ChargerSourcePrioritySelector : public Selector {
-  constexpr ChargerSourcePrioritySelector(std::vector<std::string_view> selectable_options)
-      : Selector("Charger_source_priority", std::move(selectable_options)) {}
+  ChargerSourcePrioritySelector(std::initializer_list<ChargerPriority>);
 };
 
 ///=================================================================================================

@@ -167,4 +167,17 @@ std::string Selector::AdditionalRegistrationOptions() const {
                      OptionsToString(selectable_options_));
 }
 
+template<typename Enum>
+constexpr std::vector<std::string_view> ToStrings(std::initializer_list<Enum> list) {
+  std::vector<std::string_view> result;
+  for (auto e : list) {
+    result.push_back(ToString(e));
+  }
+  return result;
+}
+
+ChargerSourcePrioritySelector::ChargerSourcePrioritySelector(
+    std::initializer_list<ChargerPriority> priorities)
+    : Selector("Charger_source_priority", ToStrings(priorities)) {}
+
 }  // namespace mqtt

@@ -23,6 +23,7 @@ MqttClient::MqttClient()
   // Polling interval plus some span time to actually perform the polling itself.
   options.keep_alive_interval(std::chrono::seconds(Settings::Instance().polling_interval + 5));
   options.clean_session(true);
+  options.automatic_reconnect(true);
   const auto& mqtt_settings = Settings::Instance().mqtt;
   if (!mqtt_settings.user.empty()) {
     options.user_name(mqtt_settings.user);
@@ -32,6 +33,7 @@ MqttClient::MqttClient()
   }
   spdlog::debug("Connecting to mqtt broker on {}", GetBrokerAddress(mqtt_settings));
   client_.connect(options.finalize());
+  client_.connect(options.finalize())->wait();
 }
 
 MqttClient::~MqttClient() {
