@@ -1,97 +1,168 @@
 #pragma once
 
+#include <functional>
+#include <mutex>
+#include <optional>
 #include <string_view>
-#include <variant>
+#include <type_traits>
 #include <vector>
 
 #include "protocols/types.hh"
 
 namespace mqtt {
 
-enum class DeviceClass {
-  kVoltage, // in volts (V)
-  kCurrent, // in amps (A)
-  kFrequency, // in hertz (Hz)
-  kPower, // in watts (W)
-  kApparentPower, // in volt-amperes (VA)
-  kEnergy, // kilo watt hour, kWh
-  kPercent, // no class, measurement is %
-  kTemperature, // celsius, °C
-  kBattery, // in %
-  kNone, // no class
-};
-
 
 /// https://www.home-assistant.io/integrations/sensor.mqtt/
 class Sensor {
  public:
-  using Value = std::variant<int, float, DeviceMode, BatteryType, ChargerPriority,
-      OutputSourcePriority>;
-
-  /// @param device_class Optional. One of https://www.home-assistant.io/integrations/sensor/#device-class
-  /// @param icon Optional. https://www.home-assistant.io/docs/configuration/customizing-devices/#icon
-  constexpr Sensor(std::string_view name, DeviceClass device_class = DeviceClass::kNone)
-      : name_(name), device_class_(device_class) {}
-
-  void Update(Value new_value);
+  enum class Kind {
+    kVoltage, // in volts (V)
+    kCurrent, // in amps (A)
+    kFrequency, // in hertz (Hz)
+    kPower, // in watts (W)
+    kApparentPower, // in volt-amperes (VA)
+    kEnergy, // kilo watt hour, kWh
+    kPercent, // no class, measurement is %
+    kTemperature, // celsius, °C
+    kBattery, // in %
+    kNone, // no class
+  };
 
  protected:
-  std::string SensorTopicRoot() const;
-  std::string StateTopic() const { return std::format("{}/state", SensorTopicRoot()); }
+  /// @param device_class Optional. One of https://www.home-assistant.io/integrations/sensor/#device-class
+  /// @param icon Optional. https://www.home-assistant.io/docs/configuration/customizing-devices/#icon
+  constexpr Sensor(std::string_view name, Kind device_class)
+      : name_(name), device_class_(device_class) {}
+
+  std::string TopicRoot() const;
+  std::string StateTopic() const;
+  // https://www.home-assistant.io/integrations/mqtt/#mqtt-discovery
+
+  void Register();
+  void Publish(bool retain) const;
 
   /// Sensor values will be sent to MQTT only when something changes.
   constexpr virtual bool UpdateWhenChangedOnly() const { return true; }
-
- private:
-  // https://www.home-assistant.io/integrations/mqtt/#mqtt-discovery
-  void Register();
-
   constexpr virtual std::string_view Type() const { return "sensor"; }
   constexpr virtual std::string_view Icon() const { return ""; }
   constexpr virtual std::string AdditionalRegistrationOptions() const { return ""; }
+  constexpr virtual void OnRegisterSuccessful() {}
 
+ private:
+  virtual std::string ValueToString() const = 0;
 
-  std::string_view name_;
-  DeviceClass device_class_;
-  Value value_;
-  bool registered_ = false;
+  const std::string_view name_;
+  const Kind device_class_;
 };
 
-class AcVoltageSensor : public Sensor {
+
+template<typename ValueType>
+class TypedSensor : public Sensor {
+ public:
+  /// Set and update sensor's value in HomeAssistant.
+  void Update(ValueType new_value) {
+    std::lock_guard lock(mutex_);
+
+    // The very first sensor update should be retained, otherwise, after Register() Home Assistant
+    // often has no enough time to create sensor object and subscribe to its topic before we send
+    // the first initial value (so it's often ignored).
+    const auto retain = !value_.has_value();
+    if (retain) {
+      Register();
+    } else if (new_value == value_ && UpdateWhenChangedOnly()) {
+      return;
+    }
+
+    value_ = new_value;
+    Publish(retain);
+  }
+
  protected:
-  constexpr AcVoltageSensor(std::string_view name) : Sensor(name, DeviceClass::kVoltage) {}
+  constexpr TypedSensor(std::string_view name, Kind device_class = Kind::kNone)
+      : Sensor(name, device_class) {}
+
+  std::optional<ValueType> GetValue() const {
+    std::lock_guard lock(mutex_);
+    return value_;
+  }
+
+  /// Set sensor's value without updating it in HomeAssistant.
+  void SetValue(ValueType new_value) {
+    std::lock_guard lock(mutex_);
+    if (!value_.has_value()) {
+      Register();
+    }
+    value_ = new_value;
+  }
+
+  std::string ValueToString() const override {
+    if constexpr (std::is_arithmetic_v<ValueType>) {
+      return std::format("{}", *value_);
+    } else if constexpr (std::is_enum_v<ValueType>) {
+      return std::string(ToString(*value_));
+    } else if constexpr (std::is_same_v<ValueType, std::string>) {
+      return *value_;
+    } else {
+      throw std::runtime_error("Unknown sensor type");
+    }
+  }
+
+  static ValueType ValueFromString(const std::string& str) {
+    if constexpr (std::is_integral_v<ValueType>) {
+      return std::stoi(str);
+    } else if constexpr (std::is_floating_point_v<ValueType>) {
+      return std::stof(str);
+    } else if constexpr (std::is_enum_v<ValueType>) {
+      ValueType result;
+      FromString(str, result);
+      return result;
+    } else if constexpr (std::is_same_v<ValueType, std::string>) {
+      return str;
+    } else {
+      throw std::runtime_error("Unknown sensor type");
+    }
+  }
+
+ private:
+  mutable std::mutex mutex_;
+  std::optional<ValueType> value_;
 };
 
-class DcVoltageSensor : public Sensor {
+class AcVoltageSensor : public TypedSensor<float> {
  protected:
-  constexpr DcVoltageSensor(std::string_view name) : Sensor(name, DeviceClass::kVoltage) {}
+  constexpr AcVoltageSensor(std::string_view name) : TypedSensor(name, Kind::kVoltage) {}
+};
+
+class DcVoltageSensor : public TypedSensor<float> {
+ protected:
+  constexpr DcVoltageSensor(std::string_view name) : TypedSensor(name, Kind::kVoltage) {}
   constexpr std::string_view Icon() const override { return "current-dc"; }
 };
 
-class DcCurrentSensor : public Sensor {
+class DcCurrentSensor : public TypedSensor<int> {
  protected:
-  constexpr DcCurrentSensor(std::string_view name) : Sensor(name, DeviceClass::kVoltage) {}
+  constexpr DcCurrentSensor(std::string_view name) : TypedSensor(name, Kind::kVoltage) {}
   constexpr std::string_view Icon() const override { return "current-dc"; }
 };
 
-class FrequencySensor : public Sensor {
+class FrequencySensor : public TypedSensor<float> {
  protected:
-  constexpr FrequencySensor(std::string_view name) : Sensor(name, DeviceClass::kFrequency) {}
+  constexpr FrequencySensor(std::string_view name) : TypedSensor(name, Kind::kFrequency) {}
 };
 
-class PowerSensor : public Sensor {
+class PowerSensor : public TypedSensor<int> {
  protected:
-  constexpr PowerSensor(std::string_view name) : Sensor(name, DeviceClass::kPower) {}
+  constexpr PowerSensor(std::string_view name) : TypedSensor(name, Kind::kPower) {}
 };
 
-class ApparentPowerSensor : public Sensor {
+class ApparentPowerSensor : public TypedSensor<int> {
  protected:
-  constexpr ApparentPowerSensor(std::string_view name) : Sensor(name, DeviceClass::kApparentPower) {}
+  constexpr ApparentPowerSensor(std::string_view name) : TypedSensor(name, Kind::kApparentPower) {}
 };
 
-class TemperatureSensor : public Sensor {
+class TemperatureSensor : public TypedSensor<int> {
  protected:
-  constexpr TemperatureSensor(std::string_view name) : Sensor(name, DeviceClass::kTemperature) {}
+  constexpr TemperatureSensor(std::string_view name) : TypedSensor(name, Kind::kTemperature) {}
 };
 
 ///=================================================================================================
@@ -125,18 +196,20 @@ struct OutputActivePower : public PowerSensor {
   constexpr OutputActivePower() : PowerSensor("Output_active_power") {}
 };
 
-struct OutputLoadPercent : public Sensor {
-  constexpr OutputLoadPercent() : Sensor("Output_load_percent", DeviceClass::kPercent) {}
+struct OutputLoadPercent : public TypedSensor<int> {
+  constexpr OutputLoadPercent() : TypedSensor("Output_load_percent", Kind::kPercent) {}
 };
 
 ///=================================================================================================
 /// INFO ABOUT BATTERIES.
 ///=================================================================================================
 
-struct BatteryType : public Sensor { constexpr BatteryType() : Sensor("Battery_type") {} };
+struct BatteryType : public TypedSensor<::BatteryType> {
+  constexpr BatteryType() : TypedSensor("Battery_type") {}
+};
 
-struct BatteryCapacity : public Sensor {
-  constexpr BatteryCapacity() : Sensor("Battery_capacity", DeviceClass::kBattery) {}
+struct BatteryCapacity : public TypedSensor<int> {
+  constexpr BatteryCapacity() : TypedSensor("Battery_capacity", Kind::kBattery) {}
 };
 
 /// Nominal voltage of the battery, which is the voltage level at which it is designed to operate.
@@ -223,8 +296,8 @@ struct PvBusVoltage : public DcVoltageSensor {
   constexpr PvBusVoltage() : DcVoltageSensor("PV_bus_voltage") {}
 };
 
-struct PvTotalGeneratedEnergy : public Sensor {
-  constexpr PvTotalGeneratedEnergy() : Sensor("PV_total_generated_energy", DeviceClass::kEnergy) {}
+struct PvTotalGeneratedEnergy : public TypedSensor<int> {
+  constexpr PvTotalGeneratedEnergy() : TypedSensor("PV_total_generated_energy", Kind::kEnergy) {}
 };
 
 ///=================================================================================================
@@ -232,28 +305,74 @@ struct PvTotalGeneratedEnergy : public Sensor {
 ///=================================================================================================
 // TODO: make these https://www.home-assistant.io/integrations/select.mqtt/
 
+template<typename Enum> requires std::is_enum_v<Enum>
+std::string Concatenate(const std::vector<Enum>& enum_values) {
+  std::string result;
+  for (auto& value : enum_values) {
+    if (!result.empty()) {
+      result += ',';
+    }
+    result += '"';
+    result.append(ToString(value));
+    result += '"';
+  }
+  return result;
+}
+
+namespace implementation_details {
+
+void SubscribeToTopic(const std::string&, std::function<void(const std::string)>&&);
+
+}  // namespace implementation_details
 
 /// https://www.home-assistant.io/integrations/select.mqtt/
-class Selector : public Sensor {
+template<typename Enum> requires std::is_enum_v<Enum>
+class Selector : public TypedSensor<Enum> {
  protected:
-  constexpr Selector(std::string_view name, std::vector<std::string_view> selectable_options)
-      : Sensor(name), selectable_options_(std::move(selectable_options)) {}
+  constexpr Selector(std::string_view name,
+                     std::initializer_list<Enum> selectable_options,
+                     std::function<void(Enum)>&& value_selected_callback)
+      : TypedSensor<Enum>(name),
+        selectable_options_(std::move(selectable_options)),
+        on_value_selected_(std::move(value_selected_callback)) {}
 
-  constexpr std::string_view Type() const override { return "select"; }
-  std::string AdditionalRegistrationOptions() const override;
+  constexpr std::string_view Type() const final { return "select"; }
+  std::string AdditionalRegistrationOptions() const final {
+    return std::format(R"("command_topic":"{}", "options":[{}])", this->StateTopic(),
+                       Concatenate(selectable_options_));
+  }
+
   constexpr bool UpdateWhenChangedOnly() const override { return false; }
+  void OnRegisterSuccessful() override {
+    auto OnMessageArrived = [this](const std::string& new_value) {
+      Enum selected_value = this->ValueFromString(new_value);
+      if (this->GetValue() != selected_value) {
+        auto previous_value = this->GetValue();
+        if (previous_value.has_value() && *previous_value != selected_value) {
+          on_value_selected_(selected_value);
+        }
+        this->SetValue(selected_value);
+      }
+    };
+    implementation_details::SubscribeToTopic(this->StateTopic(), std::move(OnMessageArrived));
+  }
 
-  const std::vector<std::string_view> selectable_options_;
+  const std::vector<Enum> selectable_options_;
+  std::function<void(Enum)> on_value_selected_;
 };
 
-struct ModeSelector : public Sensor { constexpr ModeSelector() : Sensor("Mode") {} };
-
-struct OutputSourcePrioritySelector : public Sensor {
-  constexpr OutputSourcePrioritySelector() : Sensor("Output_source_priority") {}
+struct ModeSelector : public TypedSensor<std::string> {
+  constexpr ModeSelector() : TypedSensor("Mode") {}
 };
 
-struct ChargerSourcePrioritySelector : public Selector {
-  ChargerSourcePrioritySelector(std::initializer_list<ChargerPriority>);
+struct OutputSourcePrioritySelector : public TypedSensor<std::string> {
+  constexpr OutputSourcePrioritySelector() : TypedSensor("Output_source_priority") {}
+};
+
+struct ChargerSourcePrioritySelector : public Selector<ChargerPriority> {
+  ChargerSourcePrioritySelector(std::initializer_list<ChargerPriority> priorities,
+                                std::function<void(ChargerPriority)>&& value_selected_callback)
+      : Selector("Charger_source_priority", priorities, std::move(value_selected_callback)) {}
 };
 
 ///=================================================================================================
@@ -279,6 +398,8 @@ struct Mptt2ChargerTemperature : public TemperatureSensor {
 // Warnings - const list of strings
 
 // Add a separate topic so we can send raw commands from HomeAssistant back to the inverter via MQTT
-struct RawCommands : public Sensor { constexpr RawCommands() : Sensor("COMMANDS") {} };
+struct RawCommands : public TypedSensor<std::string> {
+  constexpr RawCommands() : TypedSensor("COMMANDS") {}
+};
 
 }  // namespace mqtt

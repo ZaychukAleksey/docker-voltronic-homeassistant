@@ -2,6 +2,8 @@
 
 #include <format>
 
+#include "spdlog/spdlog.h"
+
 namespace {
 
 BatteryType GetBatteryType(int type) {
@@ -35,6 +37,16 @@ ChargerPriority GetChargerPriority(int type) {
     case 1: return ChargerPriority::kSolarAndUtility;
     case 2: return ChargerPriority::kOnlySolar;
     default: throw std::runtime_error(std::format("Unknown ChargerPriority: {}", type));
+  }
+}
+
+/// Opposite to the previous function.
+int GetChargerPriority(ChargerPriority p) {
+  switch (p) {
+    case ChargerPriority::kSolarFirst: return 0;
+    case ChargerPriority::kSolarAndUtility: return 1;
+    case ChargerPriority::kOnlySolar: return 2;
+    default: throw std::runtime_error(std::format("Unexpected ChargerPriority: {}", ToString(p)));
   }
 }
 
@@ -79,10 +91,7 @@ constexpr DeviceMode GetDeviceMode(std::string_view mode) {
 
 
 Pi18ProtocolAdapter::Pi18ProtocolAdapter(const SerialPort& port)
-    : ProtocolAdapter(port),
-      charger_source_priority_({ChargerPriority::kSolarFirst,
-                                ChargerPriority::kSolarAndUtility,
-                                ChargerPriority::kOnlySolar}) {}
+    : ProtocolAdapter(port) {}
 
 std::string Pi18ProtocolAdapter::GetGeneratedEnergyOfYearRaw(std::string_view year) {
   return Query(std::format("^P009EY{}", year), "^D011");
@@ -100,7 +109,7 @@ std::string Pi18ProtocolAdapter::GetGeneratedEnergyOfDayRaw(
 
 void Pi18ProtocolAdapter::GetMode() {
   const auto mode = GetWorkingModeRaw();
-  mode_.Update(GetDeviceMode(mode));
+  mode_.Update(ToString(GetDeviceMode(mode)));
 }
 
 void Pi18ProtocolAdapter::GetRatedInfo() {
@@ -140,7 +149,7 @@ void Pi18ProtocolAdapter::GetRatedInfo() {
   // max_ac_charging_current = data[14];
   // max_charging_current = data[15];
   // input_voltage_range = GetInputVoltageRange(data[16]);
-  output_source_priority_.Update(GetOutputSourcePriority(data[17]));
+  output_source_priority_.Update(ToString(GetOutputSourcePriority(data[17])));
   charger_source_priority_.Update(GetChargerPriority(data[18]));
   // parallel_max_num = data[19];
   // machine_type = GetMachineType(data[20]);
@@ -285,4 +294,12 @@ void Pi18ProtocolAdapter::GetTotalGeneratedEnergy() {
     throw std::runtime_error("Unexpected data in GetTotalGeneratedEnergy: " + str);
   }
   total_energy_.Update(result);
+}
+
+void Pi18ProtocolAdapter::SetChargerPriority(ChargerPriority p) {
+  spdlog::warn("Set charger priority to {}", ToString(p));
+  auto response = Query(std::format("^S009PCP0,{}", GetChargerPriority(p)), "^");
+  if (response != "1") {
+    spdlog::error("Failed to set charger priority to {}. Response: {}", ToString(p), response);
+  }
 }

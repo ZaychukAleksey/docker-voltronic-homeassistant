@@ -4,7 +4,7 @@
 #include <string>
 #include <string_view>
 
-#include "mqtt/client.h"
+#include "mqtt/async_client.h"
 
 class MqttClient {
  public:
@@ -19,8 +19,12 @@ class MqttClient {
                int qos = 1, bool retain = false);
   static std::string_view GetPrefix();
 
+  using SubscriptionCalllback = std::function<void(std::string)>;
+  void Subscribe(std::string topic, SubscriptionCalllback&&);
+
  private:
   MqttClient();
+  void SubscriptionHandler();
 
-  mqtt::client client_;
+  mqtt::async_client client_;
 };

@@ -108,11 +108,13 @@ Pi30ProtocolAdapter::Pi30ProtocolAdapter(const SerialPort& port)
       charger_source_priority_({ChargerPriority::kUtilityFirst,
                                 ChargerPriority::kSolarFirst,
                                 ChargerPriority::kSolarAndUtility,
-                                ChargerPriority::kOnlySolar}) {}
+                                ChargerPriority::kOnlySolar}, [](ChargerPriority){
+        throw std::runtime_error("Not implemented yet");
+      }) {}
 
 void Pi30ProtocolAdapter::GetMode() {
   const auto mode = GetDeviceModeRaw();
-  mode_.Update(GetDeviceMode(mode));
+  mode_.Update(ToString(GetDeviceMode(mode)));
 }
 
 void Pi30ProtocolAdapter::GetRatedInfo() {
@@ -179,7 +181,7 @@ void Pi30ProtocolAdapter::GetRatedInfo() {
   battery_float_voltage_.Update(battery_float_voltage);
   battery_type_.Update(GetBatteryType(battery_type));
 
-  output_source_priority_.Update(GetOutputSourcePriority(output_source_priority));
+  output_source_priority_.Update(ToString(GetOutputSourcePriority(output_source_priority)));
   charger_source_priority_.Update(GetChargerPriority(charger_source_priority));
 }
 

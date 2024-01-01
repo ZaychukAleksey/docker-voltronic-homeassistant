@@ -18,7 +18,25 @@ enum class DeviceMode : char {
   kEco,                 //  ECO mode
 };
 
-constexpr std::string_view ToString(DeviceMode mode) {
+
+inline void FromString(const std::string& str, DeviceMode& result) {
+  if (str == "Power on") { result = DeviceMode::kPowerOn; return; }
+  if (str == "Standby") { result = DeviceMode::kStandby; return; }
+  if (str == "Bypass") { result = DeviceMode::kBypass; return; }
+  if (str == "Battery") { result = DeviceMode::kBattery; return; }
+  if (str == "Fault") { result = DeviceMode::kFault; return; }
+  if (str == "Power saving") { result = DeviceMode::kPowerSaving; return; }
+  if (str == "Hybrid") { result = DeviceMode::kHybrid; return; }
+  if (str == "Line") { result = DeviceMode::kLine; return; }
+  if (str == "Battery test") { result = DeviceMode::kBatteryTest; return; }
+  if (str == "Shutdown") { result = DeviceMode::kShutdown; return; }
+  if (str == "Grid") { result = DeviceMode::kGrid; return; }
+  if (str == "Charge") { result = DeviceMode::kCharge; return; }
+  if (str == "ECO") { result = DeviceMode::kEco; return; }
+  throw std::runtime_error(std::format("Unexpected value for DeviceMode: {}", str));
+}
+
+constexpr std::string ToString(DeviceMode mode) {
   switch (mode) {
     case DeviceMode::kPowerOn: return "Power on";
     case DeviceMode::kStandby: return "Standby";
@@ -45,7 +63,16 @@ enum class BatteryType : char {
   kSH,              //  SH (5048MG & 5048MGX Remote Panel Communication Protocol)
 };
 
-constexpr std::string_view ToString(BatteryType type) {
+inline void FromString(const std::string& str, BatteryType& result) {
+  if (str == "AGM") { result = BatteryType::kAgm; return; }
+  if (str == "Flooded") { result = BatteryType::kFlooded; return; }
+  if (str == "User-defined") { result = BatteryType::kUser; return; }
+  if (str == "PYL") { result = BatteryType::kPYL; return; }
+  if (str == "SH") { result = BatteryType::kSH; return; }
+  throw std::runtime_error(std::format("Unexpected value for BatteryType: {}", str));
+}
+
+constexpr std::string ToString(BatteryType type) {
   switch (type) {
     case BatteryType::kAgm: return "AGM";
     case BatteryType::kFlooded: return "Flooded";
@@ -63,7 +90,15 @@ enum class ChargerPriority : char {
   kOnlySolar,       //  Only solar charging permitted
 };
 
-constexpr std::string_view ToString(ChargerPriority priority) {
+inline void FromString(const std::string& str, ChargerPriority& result) {
+  if (str == "Utility") { result = ChargerPriority::kUtilityFirst; return; }
+  if (str == "Solar") { result = ChargerPriority::kSolarFirst; return; }
+  if (str == "Solar+Utility") { result = ChargerPriority::kSolarAndUtility; return; }
+  if (str == "Solar only") { result = ChargerPriority::kOnlySolar; return; }
+  throw std::runtime_error(std::format("Unexpected value for ChargerPriority: {}", str));
+}
+
+constexpr std::string ToString(ChargerPriority priority) {
   switch (priority) {
     case ChargerPriority::kUtilityFirst: return "Utility";
     case ChargerPriority::kSolarFirst: return "Solar";
@@ -79,7 +114,14 @@ enum class OutputSourcePriority : char {
   kSolarBatteryUtility,       //  Solar -> Battery -> Utility
 };
 
-constexpr std::string_view ToString(OutputSourcePriority priority) {
+inline void FromString(const std::string& str, OutputSourcePriority& result) {
+  if (str == "Utility") { result = OutputSourcePriority::kUtility; }
+  if (str == "Solar->Utility->Battery") { result = OutputSourcePriority::kSolarUtilityBattery; }
+  if (str == "Solar->Battery->Utility") { result = OutputSourcePriority::kSolarBatteryUtility; }
+  throw std::runtime_error(std::format("Unexpected value for OutputSourcePriority: {}", str));
+}
+
+constexpr std::string ToString(OutputSourcePriority priority) {
   switch (priority) {
     case OutputSourcePriority::kUtility: return "Utility";
     case OutputSourcePriority::kSolarUtilityBattery: return "Solar->Utility->Battery";

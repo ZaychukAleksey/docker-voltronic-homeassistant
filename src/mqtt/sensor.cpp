@@ -10,34 +10,34 @@
 namespace mqtt {
 namespace {
 
-constexpr std::string_view DeviceClassToString(DeviceClass d) {
+constexpr std::string_view ToString(Sensor::Kind d) {
   switch (d) {
-    case DeviceClass::kVoltage: return "voltage";
-    case DeviceClass::kCurrent: return "current";
-    case DeviceClass::kFrequency: return "frequency";
-    case DeviceClass::kPower: return "power";
-    case DeviceClass::kApparentPower: return "apparent_power";
-    case DeviceClass::kEnergy: return "energy";
-    case DeviceClass::kPercent: return "None";
-    case DeviceClass::kTemperature: return "temperature";
-    case DeviceClass::kBattery: return "battery";
-    case DeviceClass::kNone: return "";
+    case Sensor::Kind::kVoltage: return "voltage";
+    case Sensor::Kind::kCurrent: return "current";
+    case Sensor::Kind::kFrequency: return "frequency";
+    case Sensor::Kind::kPower: return "power";
+    case Sensor::Kind::kApparentPower: return "apparent_power";
+    case Sensor::Kind::kEnergy: return "energy";
+    case Sensor::Kind::kPercent: return "None";
+    case Sensor::Kind::kTemperature: return "temperature";
+    case Sensor::Kind::kBattery: return "battery";
+    case Sensor::Kind::kNone: return "";
   }
   throw std::runtime_error("unreachable");
 }
 
-constexpr std::string_view GetMeasurement(DeviceClass d) {
+constexpr std::string_view GetMeasurement(Sensor::Kind d) {
   switch (d) {
-    case DeviceClass::kVoltage: return "V";
-    case DeviceClass::kCurrent: return "A";
-    case DeviceClass::kFrequency: return "Hz";
-    case DeviceClass::kPower: return "W";
-    case DeviceClass::kApparentPower: return "VA";
-    case DeviceClass::kEnergy: return "kWh";
-    case DeviceClass::kPercent: return "%";
-    case DeviceClass::kTemperature: return "°C";
-    case DeviceClass::kBattery: return "%";
-    case DeviceClass::kNone: return "";
+    case Sensor::Kind::kVoltage: return "V";
+    case Sensor::Kind::kCurrent: return "A";
+    case Sensor::Kind::kFrequency: return "Hz";
+    case Sensor::Kind::kPower: return "W";
+    case Sensor::Kind::kApparentPower: return "VA";
+    case Sensor::Kind::kEnergy: return "kWh";
+    case Sensor::Kind::kPercent: return "%";
+    case Sensor::Kind::kTemperature: return "°C";
+    case Sensor::Kind::kBattery: return "%";
+    case Sensor::Kind::kNone: return "";
   }
   throw std::runtime_error("unreachable");
 }
@@ -62,75 +62,22 @@ std::string_view GetDeviceId() {
   return id;
 }
 
-std::string ValueToString(const Sensor::Value& value) {
-  if (std::holds_alternative<int>(value)) {
-    return std::format("{}", std::get<int>(value));
-  }
-  if (std::holds_alternative<float>(value)) {
-    return std::format("{}", std::get<float>(value));
-  }
-  if (std::holds_alternative<DeviceMode>(value)) {
-    return std::string(ToString(std::get<DeviceMode>(value)));
-  }
-  if (std::holds_alternative<::BatteryType>(value)) {
-    return std::string(ToString(std::get<::BatteryType>(value)));
-  }
-  if (std::holds_alternative<ChargerPriority>(value)) {
-    return std::string(ToString(std::get<::ChargerPriority>(value)));
-  }
-  if (std::holds_alternative<OutputSourcePriority>(value)) {
-    return std::string(ToString(std::get<::OutputSourcePriority>(value)));
-  }
-  throw std::runtime_error("New value type detected");
-}
-
-std::string OptionsToString(const std::vector<std::string_view>& options) {
-  std::string result;
-  for (auto& option : options) {
-    if (!result.empty()) {
-      result += ',';
-    }
-    result += '"';
-    result.append(option);
-    result += '"';
-  }
-  return result;
-}
-
 }  // namespace
 
-std::string Sensor::SensorTopicRoot() const {
+std::string Sensor::TopicRoot() const {
   const auto mqtt_prefix = MqttClient::GetPrefix();
   return std::format("{}/{}/{}/{}", mqtt_prefix, Type(), GetDeviceId(), name_);
 }
 
-void Sensor::Update(Value new_value) {
-  if (new_value == value_) {
-    if (UpdateWhenChangedOnly()) return;
-  }
-
-  bool retain = false;
-  if (!registered_) {
-    Register();
-    registered_ = true;
-    // The very first sensor update should be retained, otherwise, after Register() Home Assistant
-    // often has no enough time to create sensor object and subscribe to its topic before we send
-    // the first initial value (so it's often ignored).
-    retain = true;
-  }
-
-  value_ = new_value;
-
-  const std::string value_str = ValueToString(value_);
-  spdlog::info("{}: {}", name_, value_str);
-  MqttClient::Instance().Publish(StateTopic(), value_str, 0, retain);
+std::string Sensor::StateTopic() const {
+  return std::format("{}/state", TopicRoot());
 }
 
 void Sensor::Register() {
   std::string payload = "{\n";
   payload.append(std::format("\t\"device\":{}", GetDeviceInfo()));
-  if (device_class_ != DeviceClass::kNone) {
-    payload.append(std::format(",\n\t\"device_class\":\"{}\"", DeviceClassToString(device_class_)));
+  if (device_class_ != Kind::kNone) {
+    payload.append(std::format(",\n\t\"device_class\":\"{}\"", ToString(device_class_)));
 
     // If NOT "None", the sensor is assumed to be numerical and will be displayed as a line-chart in
     // the frontend instead of as discrete values.
@@ -159,25 +106,21 @@ void Sensor::Register() {
   }
   payload += "\n}";
 
-  MqttClient::Instance().Publish(std::format("{}/config", SensorTopicRoot()), payload, 1, true);
+  MqttClient::Instance().Publish(std::format("{}/config", TopicRoot()), payload, 1, true);
+  OnRegisterSuccessful();
 }
 
-std::string Selector::AdditionalRegistrationOptions() const {
-  return std::format(R"("command_topic":"{}", "options":[{}])", StateTopic(),
-                     OptionsToString(selectable_options_));
+void Sensor::Publish(bool retain) const {
+  const auto value_str = ValueToString();
+  spdlog::info("{}: {}", name_, value_str);
+  MqttClient::Instance().Publish(StateTopic(), value_str, 0, retain);
 }
 
-template<typename Enum>
-constexpr std::vector<std::string_view> ToStrings(std::initializer_list<Enum> list) {
-  std::vector<std::string_view> result;
-  for (auto e : list) {
-    result.push_back(ToString(e));
-  }
-  return result;
+namespace implementation_details {
+
+void SubscribeToTopic(const std::string& topic, std::function<void(const std::string)>&& callback) {
+  MqttClient::Instance().Subscribe(topic, std::move(callback));
 }
 
-ChargerSourcePrioritySelector::ChargerSourcePrioritySelector(
-    std::initializer_list<ChargerPriority> priorities)
-    : Selector("Charger_source_priority", ToStrings(priorities)) {}
-
+}  // namespace implementation_details
 }  // namespace mqtt

@@ -3,6 +3,7 @@
 #include <cstdio>
 #include <cstring>
 #include <fcntl.h>
+#include <mutex>
 #include <sys/file.h>
 #include <sys/ioctl.h>
 #include <termios.h>
@@ -179,6 +180,8 @@ std::string SerialPort::Receive(int timeout_in_seconds) const {
 }
 
 std::string SerialPort::Query(std::string_view query, bool with_crc, int n_retries) const {
+  static std::mutex mutex_;
+  std::lock_guard lock(mutex_);
   while (true) {
     try {
       Send(query, with_crc);
