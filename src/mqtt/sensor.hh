@@ -42,8 +42,6 @@ class Sensor {
   void Register();
   void Publish() const;
 
-  /// Sensor values will be sent to MQTT only when something changes.
-  constexpr virtual bool UpdateWhenChangedOnly() const { return true; }
   constexpr virtual std::string_view Type() const { return "sensor"; }
   constexpr virtual std::string_view Icon() const { return ""; }
   constexpr virtual std::string AdditionalRegistrationOptions() const { return ""; }
@@ -68,7 +66,7 @@ class TypedSensor : public Sensor {
 
     if (!value_.has_value()) {
       Register();
-    } else if (new_value == value_ && UpdateWhenChangedOnly()) {
+    } else if (new_value == value_) {
       return;
     }
 
@@ -340,7 +338,6 @@ class Selector : public TypedSensor<Enum> {
                        Concatenate(selectable_options_));
   }
 
-  constexpr bool UpdateWhenChangedOnly() const override { return false; }
   void OnRegisterSuccessful() override {
     auto OnMessageArrived = [this](const std::string& new_value) {
       Enum selected_value = this->ValueFromString(new_value);
