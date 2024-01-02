@@ -110,10 +110,15 @@ void Sensor::Register() {
   OnRegisterSuccessful();
 }
 
-void Sensor::Publish(bool retain) const {
+void Sensor::Publish() const {
   const auto value_str = ValueToString();
   spdlog::info("{}: {}", name_, value_str);
-  MqttClient::Instance().Publish(StateTopic(), value_str, 0, retain);
+
+  // Using "retain" always is just easier. If not retain messages then Home Assistant often skips
+  // the first message sensor update after the sensor is created (because HA needs some time to
+  // create the sensor). If retain only the first sensor update, then some tricky situations are
+  // possible with "select" sensors.
+  MqttClient::Instance().Publish(StateTopic(), value_str, 0, true);
 }
 
 namespace implementation_details {

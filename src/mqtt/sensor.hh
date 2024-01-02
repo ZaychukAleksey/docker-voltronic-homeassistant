@@ -36,10 +36,11 @@ class Sensor {
 
   std::string TopicRoot() const;
   std::string StateTopic() const;
-  // https://www.home-assistant.io/integrations/mqtt/#mqtt-discovery
 
+  /// Register the sensor in MQTT so that Home Assistant is able to see it.
+  /// @see https://www.home-assistant.io/integrations/mqtt/#mqtt-discovery
   void Register();
-  void Publish(bool retain) const;
+  void Publish() const;
 
   /// Sensor values will be sent to MQTT only when something changes.
   constexpr virtual bool UpdateWhenChangedOnly() const { return true; }
@@ -47,6 +48,8 @@ class Sensor {
   constexpr virtual std::string_view Icon() const { return ""; }
   constexpr virtual std::string AdditionalRegistrationOptions() const { return ""; }
   constexpr virtual void OnRegisterSuccessful() {}
+
+  inline static std::mutex mutex_;
 
  private:
   virtual std::string ValueToString() const = 0;
@@ -63,18 +66,14 @@ class TypedSensor : public Sensor {
   void Update(ValueType new_value) {
     std::lock_guard lock(mutex_);
 
-    // The very first sensor update should be retained, otherwise, after Register() Home Assistant
-    // often has no enough time to create sensor object and subscribe to its topic before we send
-    // the first initial value (so it's often ignored).
-    const auto retain = !value_.has_value();
-    if (retain) {
+    if (!value_.has_value()) {
       Register();
     } else if (new_value == value_ && UpdateWhenChangedOnly()) {
       return;
     }
 
     value_ = new_value;
-    Publish(retain);
+    Publish();
   }
 
  protected:
@@ -124,7 +123,6 @@ class TypedSensor : public Sensor {
   }
 
  private:
-  mutable std::mutex mutex_;
   std::optional<ValueType> value_;
 };
 
@@ -330,7 +328,7 @@ template<typename Enum> requires std::is_enum_v<Enum>
 class Selector : public TypedSensor<Enum> {
  protected:
   constexpr Selector(std::string_view name,
-                     std::initializer_list<Enum> selectable_options,
+                     std::vector<Enum>&& selectable_options,
                      std::function<void(Enum)>&& value_selected_callback)
       : TypedSensor<Enum>(name),
         selectable_options_(std::move(selectable_options)),
