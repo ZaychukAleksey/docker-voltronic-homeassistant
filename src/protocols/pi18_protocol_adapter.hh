@@ -8,6 +8,7 @@ class Pi18ProtocolAdapter : public ProtocolAdapter {
  public:
   explicit Pi18ProtocolAdapter(const SerialPort&);
 
+  void QueryProtocolId() override { GetProtocolIdRaw(); };
   void GetRatedInfo() override;
 
   void GetMode() override;
@@ -20,7 +21,7 @@ class Pi18ProtocolAdapter : public ProtocolAdapter {
 
   void SetChargerPriority(ChargerPriority);
 
-  std::string GetProtocolIdRaw() { return Query("^P005PI", "^D005"); }
+  std::string GetProtocolIdRaw() { return Query("^P005PI", "^D00518"); }
   std::string GetCurrentTimeRaw() { return Query("^P005PI", "^D017"); }
   std::string GetTotalGeneratedEnergyRaw() { return Query("^P005ET", "^D011"); }
   std::string GetGeneratedEnergyOfYearRaw(std::string_view year);

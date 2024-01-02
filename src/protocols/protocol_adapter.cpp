@@ -6,6 +6,8 @@
 #include "pi18_protocol_adapter.hh"
 #include "pi30_protocol_adapter.hh"
 
+#include "spdlog/spdlog.h"
+
 namespace {
 
 void CheckStartsWith(std::string_view response, std::string_view expected_prefix) {
@@ -13,6 +15,18 @@ void CheckStartsWith(std::string_view response, std::string_view expected_prefix
     throw std::runtime_error(
         std::format("Response '{}' is expected to start with '{}'", response, expected_prefix));
   }
+}
+
+std::unique_ptr<ProtocolAdapter> TryProtocol(Protocol p, SerialPort& port) {
+  auto adapter = ProtocolAdapter::Get(p, port);
+  try {
+    adapter->QueryProtocolId();
+    spdlog::debug("Using protocol {}", ToString(p));
+    return adapter;
+  } catch (const std::exception& e) {
+    spdlog::debug("Failed to try protocol {}: {}", ToString(p), e.what());
+  }
+  return nullptr;
 }
 
 }  // namespace
@@ -33,4 +47,13 @@ std::string ProtocolAdapter::Query(std::string_view query,
   CheckStartsWith(response, expected_response_prefix);
   response.erase(0, expected_response_prefix.length());
   return response;
+}
+
+std::unique_ptr<ProtocolAdapter> DetectProtocol(SerialPort& port) {
+  for (auto protocol : {Protocol::PI30, Protocol::PI18}) {
+    if (auto adapter = TryProtocol(protocol, port)) {
+      return adapter;
+    }
+  }
+  throw UnsupportedProtocolException();
 }

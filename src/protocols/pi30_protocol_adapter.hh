@@ -8,6 +8,8 @@ class Pi30ProtocolAdapter : public ProtocolAdapter {
  public:
   explicit Pi30ProtocolAdapter(const SerialPort&);
 
+  void QueryProtocolId() override { GetDeviceProtocolIdRaw(); };
+
   void GetRatedInfo() override;
 
   void GetMode() override;

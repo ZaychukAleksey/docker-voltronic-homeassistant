@@ -1,6 +1,7 @@
 #pragma once
 
 #include <exception>
+#include <format>
 #include <string>
 #include <string_view>
 
@@ -33,6 +34,8 @@ class CrcMismatchException : public std::exception {
 /// Thrown when connecting to the device requires the usage of the protocol that is unsupported.
 class UnsupportedProtocolException : public BaseException {
  public:
-  UnsupportedProtocolException(std::string_view protocol) : BaseException(
-      "Unsupported protocol: " + std::string(protocol)) {}
+  UnsupportedProtocolException(std::string_view protocol = "")
+      : BaseException(protocol.empty()
+                      ? "Unsupported protocol"
+                      : std::format("Unsupported protocol: {}", protocol)) {}
 };

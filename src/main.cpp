@@ -40,6 +40,11 @@ void InitLogging(const CommandLineArguments& arguments) {
   }
 }
 
+std::unique_ptr<ProtocolAdapter> GetProtocolAdapter(SerialPort& port) {
+  // TODO: save/read protocol to/from a file.
+  return DetectProtocol(port);
+}
+
 int main(int argc, char* argv[]) {
   CommandLineArguments arguments(argc, argv);
   if (arguments.IsSet("-h", "--help")) {
@@ -58,7 +63,7 @@ int main(int argc, char* argv[]) {
     return 0;
   }
 
-  auto adapter = ProtocolAdapter::Get(Settings::Instance().protocol, port);
+  auto adapter = GetProtocolAdapter(port);
   const bool run_once = arguments.IsSet("-1", "--run-once");
   while (true) {
     adapter->GetMode();

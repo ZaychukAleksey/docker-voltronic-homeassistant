@@ -95,8 +95,6 @@ void Settings::LoadFromFile(const std::string& filename) {
       settings.mqtt.user = std::move(parameter_value);
     } else if (parameter_name == "mqtt_password") {
       settings.mqtt.password = std::move(parameter_value);
-    } else if (parameter_name == "protocol") {
-      settings.protocol = ProtocolFromString(parameter_value);
     } else if (parameter_name == "polling_interval") {
       settings.polling_interval = ToInt(parameter_name, parameter_value);
     } else if (parameter_name == "amperage_factor") {

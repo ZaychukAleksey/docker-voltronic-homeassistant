@@ -4,7 +4,6 @@
 #include <string_view>
 #include <vector>
 
-#include "protocols/protocol.hh"
 
 /// This class simply finds cmd line args and parses them for use in a program.
 /// It is not posix compliant and wont work with args like:   ./program -xf filename
@@ -42,9 +41,10 @@ struct DeviceSettings {
 };
 
 struct Settings {
-  Protocol protocol;
   DeviceSettings device;
   MqttSettings mqtt;
+
+  /// Polling interval in milliseconds.
   int polling_interval=5000;
 
   /// This allows you to modify the amperage in case the inverter is giving an incorrect

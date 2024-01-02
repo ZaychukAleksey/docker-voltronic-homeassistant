@@ -28,6 +28,8 @@ class Sensor {
     kNone, // no class
   };
 
+  virtual ~Sensor() = default;
+
  protected:
   /// @param device_class Optional. One of https://www.home-assistant.io/integrations/sensor/#device-class
   /// @param icon Optional. https://www.home-assistant.io/docs/configuration/customizing-devices/#icon
