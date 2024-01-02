@@ -2,6 +2,7 @@
 
 #include <format>
 
+#include "spdlog/spdlog.h"
 #include "exceptions.h"
 
 
@@ -58,6 +59,17 @@ ChargerPriority GetChargerPriority(int type) {
   }
 }
 
+/// Opposite to the previous function.
+std::string GetChargerPriority(ChargerPriority p) {
+  switch (p) {
+    case ChargerPriority::kUtilityFirst: return "00";
+    case ChargerPriority::kSolarFirst: return "01";
+    case ChargerPriority::kSolarAndUtility: return "02";
+    case ChargerPriority::kOnlySolar: return "03";
+  }
+  throw std::runtime_error(std::format("Unexpected ChargerPriority: {}", ToString(p)));
+}
+
 MachineType GetMachineType(int type) {
   switch (type) {
     case 0: return MachineType::kGridTie;
@@ -104,13 +116,7 @@ constexpr DeviceMode GetDeviceMode(std::string_view mode) {
 }  // namespace
 
 Pi30ProtocolAdapter::Pi30ProtocolAdapter(const SerialPort& port)
-    : ProtocolAdapter(port),
-      charger_source_priority_({ChargerPriority::kUtilityFirst,
-                                ChargerPriority::kSolarFirst,
-                                ChargerPriority::kSolarAndUtility,
-                                ChargerPriority::kOnlySolar}, [](ChargerPriority){
-        throw std::runtime_error("Not implemented yet");
-      }) {}
+    : ProtocolAdapter(port) {}
 
 void Pi30ProtocolAdapter::GetMode() {
   const auto mode = GetDeviceModeRaw();
@@ -255,4 +261,12 @@ void Pi30ProtocolAdapter::GetStatusInfo() {
   inverter_heat_sink_temperature_.Update(inverter_heat_sink_temperature);
 
   // TODO InfiniSolarE5.5KW supports total generated energy. Add it.
+}
+
+void Pi30ProtocolAdapter::SetChargerPriority(ChargerPriority p) {
+  spdlog::warn("Set charger priority to {}", ToString(p));
+  auto response = Query(std::format("PCP{}", GetChargerPriority(p)), "(");
+  if (response != "ACK") {
+    spdlog::error("Failed to set charger priority to {}. Response: {}", ToString(p), response);
+  }
 }
