@@ -99,7 +99,7 @@ SerialPort::SerialPort(std::string_view device) {
   tcflush(file_descriptor_, TCOFLUSH);
   // Read all available data to "clear" possible garbage leftover.
   try {
-    Receive(1);
+    while (true) { Receive(1); }
   } catch (const TimeoutException& /* ignored */) {
   } catch (const CrcMismatchException& /* ignored */) {}
 }
