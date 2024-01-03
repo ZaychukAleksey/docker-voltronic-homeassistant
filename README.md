@@ -2,6 +2,7 @@ This is a fork from [catalinbordan](https://github.com/catalinbordan/docker-volt
 
 The following changes were made:
 - Supports PI18 and PI30 protocols (each protocol exposes its own set of sensors in Home Assistant).
+- Protocol is detected automatically.
 - Reduced the size of the docker image.
 - Reduced the number of MQTT messages (only changed parameters are sent).
 - Polling interval is configurable.
@@ -12,7 +13,6 @@ The following changes were made:
 
 - Raw commands are unsupported at the moment.
 - PI17 protocol support.
-- Protocol autodetection.
 - Interactive integration with HomeAssistant (change inverter parameters right from HomeAssistant).
 </details>
 

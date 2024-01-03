@@ -326,10 +326,13 @@ void SubscribeToTopic(const std::string&, std::function<void(const std::string)>
 /// https://www.home-assistant.io/integrations/select.mqtt/
 template<typename Enum> requires std::is_enum_v<Enum>
 class Selector : public TypedSensor<Enum> {
+ public:
+  using Items = std::initializer_list<Enum>;
+  using OnSelectedCallback = std::function<void(Enum)>;
  protected:
   constexpr Selector(std::string_view name,
                      std::vector<Enum>&& selectable_options,
-                     std::function<void(Enum)>&& value_selected_callback)
+                     OnSelectedCallback&& value_selected_callback)
       : TypedSensor<Enum>(name),
         selectable_options_(std::move(selectable_options)),
         on_value_selected_(std::move(value_selected_callback)) {}
@@ -362,14 +365,14 @@ struct ModeSelector : public TypedSensor<std::string> {
   constexpr ModeSelector() : TypedSensor("Mode") {}
 };
 
-struct OutputSourcePrioritySelector : public TypedSensor<std::string> {
-  constexpr OutputSourcePrioritySelector() : TypedSensor("Output_source_priority") {}
+struct OutputSourcePrioritySelector : public Selector<OutputSourcePriority> {
+  constexpr OutputSourcePrioritySelector(Items priorities, OnSelectedCallback&& callback)
+      : Selector("Output_source_priority", priorities, std::move(callback)) {}
 };
 
 struct ChargerSourcePrioritySelector : public Selector<ChargerPriority> {
-  ChargerSourcePrioritySelector(std::initializer_list<ChargerPriority> priorities,
-                                std::function<void(ChargerPriority)>&& value_selected_callback)
-      : Selector("Charger_source_priority", priorities, std::move(value_selected_callback)) {}
+  ChargerSourcePrioritySelector(Items priorities, OnSelectedCallback&& callback)
+      : Selector("Charger_source_priority", priorities, std::move(callback)) {}
 };
 
 ///=================================================================================================

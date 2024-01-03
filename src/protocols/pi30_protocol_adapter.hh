@@ -19,6 +19,7 @@ class Pi30ProtocolAdapter : public ProtocolAdapter {
  protected:
   bool UseCrcInQueries() override { return true; }
   void SetChargerPriority(ChargerPriority);
+  void SetOutputSourcePriority(OutputSourcePriority);
 
   std::string GetDeviceProtocolIdRaw() { return Query("QPI", "(PI"); }
   std::string GetSerialNumberRaw() { return Query("QID", "("); }
@@ -48,7 +49,12 @@ class Pi30ProtocolAdapter : public ProtocolAdapter {
   mqtt::BatteryFloatVoltage battery_float_voltage_;
   mqtt::BatteryType battery_type_;
 
-  mqtt::OutputSourcePrioritySelector output_source_priority_;
+  mqtt::OutputSourcePrioritySelector output_source_priority_{
+      {OutputSourcePriority::kUtility,
+       OutputSourcePriority::kSolarUtilityBattery,
+       OutputSourcePriority::kSolarBatteryUtility},
+      [this](OutputSourcePriority p) { SetOutputSourcePriority(p); }
+  };
   mqtt::ChargerSourcePrioritySelector charger_source_priority_{
       {ChargerPriority::kUtilityFirst,
        ChargerPriority::kSolarFirst,

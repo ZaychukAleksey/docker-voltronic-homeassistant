@@ -115,9 +115,9 @@ enum class OutputSourcePriority : char {
 };
 
 inline void FromString(const std::string& str, OutputSourcePriority& result) {
-  if (str == "Utility") { result = OutputSourcePriority::kUtility; }
-  if (str == "Solar->Utility->Battery") { result = OutputSourcePriority::kSolarUtilityBattery; }
-  if (str == "Solar->Battery->Utility") { result = OutputSourcePriority::kSolarBatteryUtility; }
+  if (str == "Utility") { result = OutputSourcePriority::kUtility; return; }
+  if (str == "Solar->Utility->Battery") { result = OutputSourcePriority::kSolarUtilityBattery; return; }
+  if (str == "Solar->Battery->Utility") { result = OutputSourcePriority::kSolarBatteryUtility; return; }
   throw std::runtime_error(std::format("Unexpected value for OutputSourcePriority: {}", str));
 }
 

@@ -31,6 +31,16 @@ OutputSourcePriority GetOutputSourcePriority(int type) {
   }
 }
 
+/// Opposite to the previous function.
+std::string GetOutputSourcePriority(OutputSourcePriority p) {
+  switch (p) {
+    case OutputSourcePriority::kSolarUtilityBattery: return "0";
+    case OutputSourcePriority::kSolarBatteryUtility: return "1";
+    default:
+      throw std::runtime_error(std::format("Unexpected OutputSourcePriority: {}", ToString(p)));
+  }
+}
+
 ChargerPriority GetChargerPriority(int type) {
   switch (type) {
     case 0: return ChargerPriority::kSolarFirst;
@@ -149,7 +159,7 @@ void Pi18ProtocolAdapter::GetRatedInfo() {
   // max_ac_charging_current = data[14];
   // max_charging_current = data[15];
   // input_voltage_range = GetInputVoltageRange(data[16]);
-  output_source_priority_.Update(ToString(GetOutputSourcePriority(data[17])));
+  output_source_priority_.Update(GetOutputSourcePriority(data[17]));
   charger_source_priority_.Update(GetChargerPriority(data[18]));
   // parallel_max_num = data[19];
   // machine_type = GetMachineType(data[20]);
@@ -301,5 +311,13 @@ void Pi18ProtocolAdapter::SetChargerPriority(ChargerPriority p) {
   auto response = Query(std::format("^S009PCP0,{}", GetChargerPriority(p)), "^");
   if (response != "1") {
     spdlog::error("Failed to set charger priority to {}. Response: {}", ToString(p), response);
+  }
+}
+
+void Pi18ProtocolAdapter::SetOutputSourcePriority(OutputSourcePriority p) {
+  spdlog::warn("Set output source priority to {}", ToString(p));
+  auto response = Query(std::format("^S007POP{}", GetOutputSourcePriority(p)), "^");
+  if (response != "1") {
+    spdlog::error("Failed to set output source priority to {}. Response: {}", ToString(p), response);
   }
 }
