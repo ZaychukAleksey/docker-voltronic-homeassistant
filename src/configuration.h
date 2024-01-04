@@ -58,6 +58,11 @@ struct Settings {
   static const Settings& Instance();
   static void LoadFromFile(const std::string& filename);
 
+  // Dirty bypass to initialize serial number (SN) after the settings is loaded from file. Settings
+  // are required to retrieve SN from the inverter. But SN is required for mqtt which is used
+  // during retrieving data from the inverter as well.
+  static void SetDeviceSerialNumber(const std::string&);
+
  private:
   Settings() = default;
 };

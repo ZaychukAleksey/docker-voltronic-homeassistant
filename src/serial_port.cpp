@@ -32,13 +32,10 @@ bool CheckCRC(std::string_view data) {
   const uint16_t actual_crc = CRC::Calculate(data.data(), data.length() - 3, CRC::CRC_16_XMODEM());
   char crc[2] = {static_cast<char>(actual_crc >> 8), static_cast<char>(actual_crc & 0xff)};
   const bool matches = data[data.length() - 3] == crc[0] && data[data.length() - 2] == crc[1];
-  if (matches) {
-    spdlog::debug("CRC OK: {:02x} {:02x}", crc[0], crc[1]);
-  } else {
+  if (!matches) {
     spdlog::warn("CRC mismatch.\n\tActual: {:02x} {:02x}.\n\tExpected: {:02x} {:02x}.", crc[0],
                  crc[1],
                  data[data.length() - 3], data[data.length() - 2]);
-
   }
   return matches;
 }

@@ -54,6 +54,11 @@ const Settings& Settings::Instance() {
   return instance;
 }
 
+void Settings::SetDeviceSerialNumber(const std::string& sn) {
+  // yeah, very dirty!
+  const_cast<Settings&>(Instance()).device.serial_number = sn;
+}
+
 void Settings::LoadFromFile(const std::string& filename) {
   std::ifstream file(filename);
   if (!file) {
@@ -83,8 +88,6 @@ void Settings::LoadFromFile(const std::string& filename) {
       settings.device.manufacturer = std::move(parameter_value);
     } else if (parameter_name == "device_model") {
       settings.device.model = std::move(parameter_value);
-    } else if (parameter_name == "device_serial_number") {
-      settings.device.serial_number = std::move(parameter_value);
     } else if (parameter_name == "mqtt_server") {
       settings.mqtt.server = std::move(parameter_value);
     } else if (parameter_name == "mqtt_port") {

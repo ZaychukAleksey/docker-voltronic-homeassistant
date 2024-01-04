@@ -4,7 +4,6 @@
 #include <mutex>
 #include <unordered_map>
 
-#include "configuration.h"
 #include "spdlog/spdlog.h"
 
 namespace {
@@ -22,23 +21,20 @@ auto GetBrokerAddress(const MqttSettings& mqtt_settings) {
 }  // namespace
 
 
-MqttClient::MqttClient()
-    : client_(GetBrokerAddress(Settings::Instance().mqtt),
-              Settings::Instance().device.serial_number) {
+MqttClient::MqttClient(const MqttSettings& settings, const std::string& client_id)
+    : client_(GetBrokerAddress(settings), client_id) {
 
   mqtt::connect_options_builder options;
-  // Polling interval plus some span time to actually perform the polling itself.
-  options.keep_alive_interval(std::chrono::seconds(Settings::Instance().polling_interval + 5));
+  options.keep_alive_interval(std::chrono::seconds(10));
   options.clean_session(true);
   options.automatic_reconnect(true);
-  const auto& mqtt_settings = Settings::Instance().mqtt;
-  if (!mqtt_settings.user.empty()) {
-    options.user_name(mqtt_settings.user);
+  if (!settings.user.empty()) {
+    options.user_name(settings.user);
   }
-  if (!mqtt_settings.password.empty()) {
-    options.password(mqtt_settings.password);
+  if (!settings.password.empty()) {
+    options.password(settings.password);
   }
-  spdlog::debug("Connecting to mqtt broker on {}", GetBrokerAddress(mqtt_settings));
+  spdlog::debug("Connecting to mqtt broker on {}", GetBrokerAddress(settings));
   client_.connect(options.finalize())->wait();
   client_.start_consuming();
 }
@@ -51,8 +47,8 @@ MqttClient& MqttClient::Instance() {
   return *mqtt_;
 }
 
-void MqttClient::Init() {
-  mqtt_ = std::unique_ptr<MqttClient>(new MqttClient());
+void MqttClient::Init(const MqttSettings& settings, const std::string& client_id) {
+  mqtt_ = std::unique_ptr<MqttClient>(new MqttClient(settings, client_id));
 }
 
 std::string_view MqttClient::GetPrefix() {

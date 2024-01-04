@@ -8,6 +8,7 @@ class Pi18ProtocolAdapter : public ProtocolAdapter {
  public:
   explicit Pi18ProtocolAdapter(const SerialPort&);
 
+  std::string GetSerialNumber() override;
   void QueryProtocolId() override { GetProtocolIdRaw(); };
   void GetRatedInfo() override;
 

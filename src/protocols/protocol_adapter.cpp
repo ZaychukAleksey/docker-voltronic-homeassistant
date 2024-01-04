@@ -21,7 +21,7 @@ std::unique_ptr<ProtocolAdapter> TryProtocol(Protocol p, SerialPort& port) {
   auto adapter = ProtocolAdapter::Get(p, port);
   try {
     adapter->QueryProtocolId();
-    spdlog::debug("Using protocol {}", ToString(p));
+    spdlog::info("Using protocol {}", ToString(p));
     return adapter;
   } catch (const std::exception& e) {
     spdlog::debug("Failed to try protocol {}: {}", ToString(p), e.what());

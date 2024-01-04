@@ -3,6 +3,7 @@
 #include <format>
 
 #include "spdlog/spdlog.h"
+#include "utils.h"
 
 namespace {
 
@@ -102,6 +103,20 @@ constexpr DeviceMode GetDeviceMode(std::string_view mode) {
 
 Pi18ProtocolAdapter::Pi18ProtocolAdapter(const SerialPort& port)
     : ProtocolAdapter(port) {}
+
+std::string Pi18ProtocolAdapter::GetSerialNumber() {
+  // Response: ^D025LLXXXXXXXXXXXXXXXXXXXX<CRC><cr>
+  auto response = GetSeriesNumberRaw();
+  if (response.length() != 22) {
+    throw std::runtime_error(std::format("Unexpected serial number response length: {}", response));
+  }
+  const auto serial_number_length = 10 * AsDigit(response[0]) + AsDigit(response[1]);
+  if (serial_number_length < 1 || serial_number_length > 20) {
+    throw std::runtime_error(std::format("Unexpected serial number length: {}. Response: {}",
+                                         serial_number_length, response));
+  }
+  return response.substr(2, serial_number_length);
+}
 
 std::string Pi18ProtocolAdapter::GetGeneratedEnergyOfYearRaw(std::string_view year) {
   return Query(std::format("^P009EY{}", year), "^D011");

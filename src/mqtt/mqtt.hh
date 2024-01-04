@@ -4,12 +4,13 @@
 #include <string>
 #include <string_view>
 
+#include "configuration.h"
 #include "mqtt/async_client.h"
 
 class MqttClient {
  public:
   static MqttClient& Instance();
-  static void Init();
+  static void Init(const MqttSettings&, const std::string& client_id);
 
   ~MqttClient();
 
@@ -23,7 +24,7 @@ class MqttClient {
   void Subscribe(std::string topic, SubscriptionCalllback&&);
 
  private:
-  MqttClient();
+  MqttClient(const MqttSettings&, const std::string& client_id);
   void SubscriptionHandler();
 
   mqtt::async_client client_;

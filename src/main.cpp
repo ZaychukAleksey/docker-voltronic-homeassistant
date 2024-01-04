@@ -53,7 +53,6 @@ int main(int argc, char* argv[]) {
   }
   InitLogging(arguments);
   Settings::LoadFromFile(GetConfigurationFileName(arguments));
-  MqttClient::Init();
   SerialPort port(Settings::Instance().device.path);
 
   // Logic to send 'raw commands' to the inverter.
@@ -64,6 +63,10 @@ int main(int argc, char* argv[]) {
   }
 
   auto adapter = GetProtocolAdapter(port);
+  const auto serial_number = adapter->GetSerialNumber();
+  Settings::SetDeviceSerialNumber(serial_number);
+  MqttClient::Init(Settings::Instance().mqtt, serial_number);
+
   const bool run_once = arguments.IsSet("-1", "--run-once");
   while (true) {
     adapter->GetMode();

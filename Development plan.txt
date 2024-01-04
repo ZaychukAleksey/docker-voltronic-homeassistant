@@ -1,7 +1,5 @@
 0. Fix Paho MQTT library?
-1. Retrieve serial number from the inverter. Use it instead of the one from settings.
-2. Dump stateful info into some state file (to speedup application startup and reduce the number of
-   queries sent to inverter).
+
 3. Add sensors for serial number, firmware versions, etc.
 4. Add sensors for warnings.
 5. Sensor: battery type.

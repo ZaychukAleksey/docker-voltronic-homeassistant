@@ -12,6 +12,8 @@ class ProtocolAdapter {
   static std::unique_ptr<ProtocolAdapter> Get(Protocol, const SerialPort&);
   virtual ~ProtocolAdapter() = default;
 
+  virtual std::string GetSerialNumber() = 0;
+
   /// Send "get query protocol ID" command according to the current protocol.
   /// @note if the inverted is using a protocol, different than the one that the current adapter is
   ///       using, calling that function should yield an exception.

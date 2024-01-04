@@ -1,6 +1,8 @@
 #include "utils.h"
 
 #include <cstdio>
+#include <format>
+#include <stdexcept>
 
 
 std::string PrintBytesAsHex(std::string_view str) {
@@ -51,4 +53,11 @@ std::string EscapeString(std::string_view src) {
   }
 
   return dest;
+}
+
+unsigned AsDigit(char c) {
+  if (!std::isdigit(c)) {
+    throw std::runtime_error(std::format("Digit is expected, but got {}", c));
+  }
+  return static_cast<unsigned>(c - '0');
 }
