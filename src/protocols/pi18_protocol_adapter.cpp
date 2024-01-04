@@ -119,7 +119,7 @@ std::string Pi18ProtocolAdapter::GetGeneratedEnergyOfDayRaw(
 
 void Pi18ProtocolAdapter::GetMode() {
   const auto mode = GetWorkingModeRaw();
-  mode_.Update(ToString(GetDeviceMode(mode)));
+  mode_.Update(GetDeviceMode(mode));
 }
 
 void Pi18ProtocolAdapter::GetRatedInfo() {

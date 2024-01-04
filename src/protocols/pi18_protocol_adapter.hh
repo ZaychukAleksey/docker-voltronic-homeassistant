@@ -46,7 +46,7 @@ class Pi18ProtocolAdapter : public ProtocolAdapter {
   std::string GetAcSupplyLoadTimeBucketRaw() { return Query("^P005ACLT", "^D012"); }
 
  private:
-  mqtt::ModeSelector mode_;
+  mqtt::InverterMode mode_;
 
   mqtt::BatteryNominalVoltage battery_nominal_voltage_;
   mqtt::BatteryStopDischargingVoltageWithGrid battery_stop_discharging_voltage_with_grid_;

@@ -130,7 +130,7 @@ Pi30ProtocolAdapter::Pi30ProtocolAdapter(const SerialPort& port)
 
 void Pi30ProtocolAdapter::GetMode() {
   const auto mode = GetDeviceModeRaw();
-  mode_.Update(ToString(GetDeviceMode(mode)));
+  mode_.Update(GetDeviceMode(mode));
 }
 
 void Pi30ProtocolAdapter::GetRatedInfo() {

@@ -361,8 +361,8 @@ class Selector : public TypedSensor<Enum> {
   std::function<void(Enum)> on_value_selected_;
 };
 
-struct ModeSelector : public TypedSensor<std::string> {
-  constexpr ModeSelector() : TypedSensor("Mode") {}
+struct InverterMode : public TypedSensor<DeviceMode> {
+  constexpr InverterMode() : TypedSensor("Mode") {}
 };
 
 struct OutputSourcePrioritySelector : public Selector<OutputSourcePriority> {

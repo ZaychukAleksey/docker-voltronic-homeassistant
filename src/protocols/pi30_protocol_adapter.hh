@@ -39,7 +39,7 @@ class Pi30ProtocolAdapter : public ProtocolAdapter {
   // Here could go routines to query data for parallel system, but I haven't implemented them.
   // ...
 
-  mqtt::ModeSelector mode_;
+  mqtt::InverterMode mode_;
 
   mqtt::BatteryNominalVoltage battery_nominal_voltage_;
   mqtt::BatteryStopDischargingVoltageWithGrid battery_stop_discharging_voltage_with_grid_;
