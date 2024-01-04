@@ -139,7 +139,7 @@ class DcVoltageSensor : public TypedSensor<float> {
 
 class DcCurrentSensor : public TypedSensor<int> {
  protected:
-  constexpr DcCurrentSensor(std::string_view name) : TypedSensor(name, Kind::kVoltage) {}
+  constexpr DcCurrentSensor(std::string_view name) : TypedSensor(name, Kind::kCurrent) {}
   constexpr std::string_view Icon() const override { return "current-dc"; }
 };
 
