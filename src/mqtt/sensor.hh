@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "protocols/types.hh"
+#include "utils.h"
 
 namespace mqtt {
 
@@ -126,6 +127,50 @@ class TypedSensor : public Sensor {
   std::optional<ValueType> value_;
 };
 
+namespace implementation_details {
+
+void SubscribeToTopic(const std::string&, std::function<void(const std::string)>&&);
+
+}  // namespace implementation_details
+
+/// https://www.home-assistant.io/integrations/select.mqtt/
+template<typename Enum> requires std::is_enum_v<Enum>
+class Selector : public TypedSensor<Enum> {
+ public:
+  using Items = std::initializer_list<Enum>;
+  using OnSelectedCallback = std::function<void(Enum)>;
+ protected:
+  constexpr Selector(std::string_view name,
+                     std::vector<Enum>&& selectable_options,
+                     OnSelectedCallback&& value_selected_callback)
+      : TypedSensor<Enum>(name),
+        selectable_options_(std::move(selectable_options)),
+        on_value_selected_(std::move(value_selected_callback)) {}
+
+  constexpr std::string_view Type() const final { return "select"; }
+  std::string AdditionalRegistrationOptions() const final {
+    return std::format(R"("command_topic":"{}", "options":[{}])", this->StateTopic(),
+                       Concatenate(selectable_options_));
+  }
+
+  void OnRegisterSuccessful() override {
+    auto OnMessageArrived = [this](const std::string& new_value) {
+      Enum selected_value = this->ValueFromString(new_value);
+      if (this->GetValue() != selected_value) {
+        auto previous_value = this->GetValue();
+        if (previous_value.has_value() && *previous_value != selected_value) {
+          on_value_selected_(selected_value);
+        }
+        this->SetValue(selected_value);
+      }
+    };
+    implementation_details::SubscribeToTopic(this->StateTopic(), std::move(OnMessageArrived));
+  }
+
+  const std::vector<Enum> selectable_options_;
+  std::function<void(Enum)> on_value_selected_;
+};
+
 class AcVoltageSensor : public TypedSensor<float> {
  protected:
   constexpr AcVoltageSensor(std::string_view name) : TypedSensor(name, Kind::kVoltage) {}
@@ -202,8 +247,11 @@ struct OutputLoadPercent : public TypedSensor<int> {
 /// INFO ABOUT BATTERIES.
 ///=================================================================================================
 
-struct BatteryType : public TypedSensor<::BatteryType> {
-  constexpr BatteryType() : TypedSensor("Battery_type") {}
+struct BatteryType : public Selector<::BatteryType> {
+  constexpr BatteryType(Items types, OnSelectedCallback&& callback)
+      : Selector("Battery_type", types, std::move(callback)) {}
+
+  constexpr std::string_view Icon() const override { return "car-battery"; }
 };
 
 struct BatteryCapacity : public TypedSensor<int> {
@@ -301,65 +349,6 @@ struct PvTotalGeneratedEnergy : public TypedSensor<int> {
 ///=================================================================================================
 /// Mode & status & priorities.
 ///=================================================================================================
-// TODO: make these https://www.home-assistant.io/integrations/select.mqtt/
-
-template<typename Enum> requires std::is_enum_v<Enum>
-std::string Concatenate(const std::vector<Enum>& enum_values) {
-  std::string result;
-  for (auto& value : enum_values) {
-    if (!result.empty()) {
-      result += ',';
-    }
-    result += '"';
-    result.append(ToString(value));
-    result += '"';
-  }
-  return result;
-}
-
-namespace implementation_details {
-
-void SubscribeToTopic(const std::string&, std::function<void(const std::string)>&&);
-
-}  // namespace implementation_details
-
-/// https://www.home-assistant.io/integrations/select.mqtt/
-template<typename Enum> requires std::is_enum_v<Enum>
-class Selector : public TypedSensor<Enum> {
- public:
-  using Items = std::initializer_list<Enum>;
-  using OnSelectedCallback = std::function<void(Enum)>;
- protected:
-  constexpr Selector(std::string_view name,
-                     std::vector<Enum>&& selectable_options,
-                     OnSelectedCallback&& value_selected_callback)
-      : TypedSensor<Enum>(name),
-        selectable_options_(std::move(selectable_options)),
-        on_value_selected_(std::move(value_selected_callback)) {}
-
-  constexpr std::string_view Type() const final { return "select"; }
-  std::string AdditionalRegistrationOptions() const final {
-    return std::format(R"("command_topic":"{}", "options":[{}])", this->StateTopic(),
-                       Concatenate(selectable_options_));
-  }
-
-  void OnRegisterSuccessful() override {
-    auto OnMessageArrived = [this](const std::string& new_value) {
-      Enum selected_value = this->ValueFromString(new_value);
-      if (this->GetValue() != selected_value) {
-        auto previous_value = this->GetValue();
-        if (previous_value.has_value() && *previous_value != selected_value) {
-          on_value_selected_(selected_value);
-        }
-        this->SetValue(selected_value);
-      }
-    };
-    implementation_details::SubscribeToTopic(this->StateTopic(), std::move(OnMessageArrived));
-  }
-
-  const std::vector<Enum> selectable_options_;
-  std::function<void(Enum)> on_value_selected_;
-};
 
 struct InverterMode : public TypedSensor<DeviceMode> {
   constexpr InverterMode() : TypedSensor("Mode") {}
@@ -396,10 +385,5 @@ struct Mptt2ChargerTemperature : public TemperatureSensor {
 //  returns them once (and then "resets" them), or warnings aren't accumulated and shown only to
 //  reflect the current situation.
 // Warnings - const list of strings
-
-// Add a separate topic so we can send raw commands from HomeAssistant back to the inverter via MQTT
-struct RawCommands : public TypedSensor<std::string> {
-  constexpr RawCommands() : TypedSensor("COMMANDS") {}
-};
 
 }  // namespace mqtt

@@ -22,6 +22,7 @@ class Pi18ProtocolAdapter : public ProtocolAdapter {
 
   void SetChargerPriority(ChargerPriority);
   void SetOutputSourcePriority(OutputSourcePriority);
+  void SetBatteryType(BatteryType);
 
   std::string GetProtocolIdRaw() { return Query("^P005PI", "^D00518"); }
   std::string GetCurrentTimeRaw() { return Query("^P005PI", "^D017"); }
@@ -55,7 +56,10 @@ class Pi18ProtocolAdapter : public ProtocolAdapter {
   mqtt::BatteryUnderVoltage battery_under_voltage_;
   mqtt::BatteryBulkVoltage battery_bulk_voltage_;
   mqtt::BatteryFloatVoltage battery_float_voltage_;
-  mqtt::BatteryType battery_type_;
+  mqtt::BatteryType battery_type_{
+      {BatteryType::kAgm, BatteryType::kFlooded, BatteryType::kUser},
+      [this](BatteryType b) { SetBatteryType(b); }
+  };
 
   mqtt::OutputSourcePrioritySelector output_source_priority_{
       {OutputSourcePriority::kSolarUtilityBattery, OutputSourcePriority::kSolarBatteryUtility},

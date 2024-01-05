@@ -16,6 +16,16 @@ BatteryType GetBatteryType(int type) {
   }
 }
 
+/// Opposite to the previous function.
+int GetBatteryType(BatteryType t) {
+  switch (t) {
+    case BatteryType::kAgm: return 0;
+    case BatteryType::kFlooded: return 1;
+    case BatteryType::kUser: return 2;
+    default: throw std::runtime_error(std::format("Unexpected BatteryType: {}", ToString(t)));
+  }
+}
+
 InputVoltageRange GetInputVoltageRange(int type) {
   switch (type) {
     case 0: return InputVoltageRange::kAppliance;
@@ -321,6 +331,7 @@ void Pi18ProtocolAdapter::GetTotalGeneratedEnergy() {
   total_energy_.Update(result);
 }
 
+// TODO: reduce code duplication in the methods below.
 void Pi18ProtocolAdapter::SetChargerPriority(ChargerPriority p) {
   spdlog::warn("Set charger priority to {}", ToString(p));
   auto response = Query(std::format("^S009PCP0,{}", GetChargerPriority(p)), "^");
@@ -334,5 +345,13 @@ void Pi18ProtocolAdapter::SetOutputSourcePriority(OutputSourcePriority p) {
   auto response = Query(std::format("^S007POP{}", GetOutputSourcePriority(p)), "^");
   if (response != "1") {
     spdlog::error("Failed to set output source priority to {}. Response: {}", ToString(p), response);
+  }
+}
+
+void Pi18ProtocolAdapter::SetBatteryType(BatteryType t) {
+  spdlog::warn("Set battery type to {}", ToString(t));
+  auto response = Query(std::format("^S007PBT{}", GetBatteryType(t)), "^");
+  if (response != "ACK") {
+    spdlog::error("Failed to set battery type to {}. Response: {}", ToString(t), response);
   }
 }

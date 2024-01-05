@@ -32,6 +32,18 @@ BatteryType GetBatteryType(int type) {
   }
 }
 
+/// Opposite to the previous function.
+std::string GetBatteryType(BatteryType t) {
+  // Note that there are several PI30 protocols, and these constants may vary very differently.
+  // For that reason we support only the first three of them which are common.
+  switch (t) {
+    case BatteryType::kAgm: return "00";
+    case BatteryType::kFlooded: return "01";
+    case BatteryType::kUser: return "02";
+    default: throw std::runtime_error(std::format("Unexpected BatteryType: {}", ToString(t)));
+  }
+}
+
 InputVoltageRange GetInputVoltageRange(int type) {
   switch (type) {
     case 0: return InputVoltageRange::kAppliance;
@@ -286,5 +298,14 @@ void Pi30ProtocolAdapter::SetOutputSourcePriority(OutputSourcePriority p) {
   auto response = Query(std::format("POP{}", GetOutputSourcePriority(p)), "(");
   if (response != "ACK") {
     spdlog::error("Failed to set output source priority to {}. Response: {}", ToString(p), response);
+  }
+}
+
+void Pi30ProtocolAdapter::SetBatteryType(BatteryType t) {
+  spdlog::warn("Set battery type to {}", ToString(t));
+  //  for InfiniSolar its "LBF"...
+  auto response = Query(std::format("POP{}", GetBatteryType(t)), "(");
+  if (response != "ACK") {
+    spdlog::error("Failed to set battery type to {}. Response: {}", ToString(t), response);
   }
 }

@@ -59,7 +59,11 @@ enum class BatteryType : char {
   kAgm,             //  AGM
   kFlooded,         //  Flooded
   kUser,            //  User-defined
-  kPYL,             //  PYL (5048MG & 5048MGX Remote Panel Communication Protocol)
+  kPYL,             //  Pylon (5048MG & 5048MGX Remote Panel Communication Protocol)
+  kX,               //  X, (only for king)
+  kWeco,            //  Weco; (only for king)
+  kSol,             //  Sol, (only for king)
+  kBak,             //  BAK(only for king)
   kSH,              //  SH (5048MG & 5048MGX Remote Panel Communication Protocol)
 };
 
