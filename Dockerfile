@@ -34,4 +34,4 @@ FROM alpine:latest
 # Copy inverter_poller binary from the build image into our result image.
 COPY --from=build_image /build/src/inverter_poller /
 
-ENTRYPOINT ["/inverter_poller -d"]
+ENTRYPOINT ["/inverter_poller"]

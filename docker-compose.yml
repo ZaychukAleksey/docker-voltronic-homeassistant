@@ -37,6 +37,9 @@ services:
       - /dev/ttyMOD2:/dev/ttyMOD2
       - /dev/ttyMOD3:/dev/ttyMOD3
 
+    # Temporarily enable debug logging.
+    command: -d
+
   # Used to auto-update the application as new version is released.
   # Comment the whole section out in case, if you don't want auto-update.
   watchtower:
