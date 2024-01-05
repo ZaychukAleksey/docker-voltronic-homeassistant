@@ -354,6 +354,15 @@ struct InverterMode : public TypedSensor<DeviceMode> {
   constexpr InverterMode() : TypedSensor("Mode") {}
 };
 
+/// The AC-Input terminal of the off-grid inverters accepts a wide range of sinusoidal voltages.
+/// The APL and UPS modes will allow a wider or narrower selection of voltages.
+struct AcInputVoltageRangeSelector : public Selector<InputVoltageRange> {
+  constexpr AcInputVoltageRangeSelector(Items ranges, OnSelectedCallback&& callback)
+      : Selector("AC_input_voltage_range", ranges, std::move(callback)) {}
+
+  constexpr std::string_view Icon() const override { return "sine-wave"; }
+};
+
 struct OutputSourcePrioritySelector : public Selector<OutputSourcePriority> {
   constexpr OutputSourcePrioritySelector(Items priorities, OnSelectedCallback&& callback)
       : Selector("Output_source_priority", priorities, std::move(callback)) {}

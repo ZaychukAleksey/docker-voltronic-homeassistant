@@ -34,6 +34,15 @@ InputVoltageRange GetInputVoltageRange(int type) {
   }
 }
 
+/// Opposite to the previous function.
+int GetInputVoltageRange(InputVoltageRange r) {
+  switch (r) {
+    case InputVoltageRange::kAppliance: return 0;
+    case InputVoltageRange::kUps: return 1;
+  }
+  throw std::runtime_error(std::format("Unexpected InputVoltageRange: {}", ToString(r)));
+}
+
 OutputSourcePriority GetOutputSourcePriority(int type) {
   switch (type) {
     case 0: return OutputSourcePriority::kSolarUtilityBattery;
@@ -183,7 +192,7 @@ void Pi18ProtocolAdapter::GetRatedInfo() {
   battery_type_.Update(GetBatteryType(data[13]));
   // max_ac_charging_current = data[14];
   // max_charging_current = data[15];
-  // input_voltage_range = GetInputVoltageRange(data[16]);
+  input_voltage_range_.Update(GetInputVoltageRange(data[16]));
   output_source_priority_.Update(GetOutputSourcePriority(data[17]));
   charger_source_priority_.Update(GetChargerPriority(data[18]));
   // parallel_max_num = data[19];
@@ -353,5 +362,13 @@ void Pi18ProtocolAdapter::SetBatteryType(BatteryType t) {
   auto response = Query(std::format("^S007PBT{}", GetBatteryType(t)), "^");
   if (response != "ACK") {
     spdlog::error("Failed to set battery type to {}. Response: {}", ToString(t), response);
+  }
+}
+
+void Pi18ProtocolAdapter::SetInputVoltageRange(InputVoltageRange r) {
+  spdlog::warn("Set input voltage range to {}", ToString(r));
+  auto response = Query(std::format("^S007PGR{}", GetInputVoltageRange(r)), "^");
+  if (response != "ACK") {
+    spdlog::error("Failed input voltage range to {}. Response: {}", ToString(r), response);
   }
 }

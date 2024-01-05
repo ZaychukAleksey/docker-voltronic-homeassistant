@@ -20,6 +20,7 @@ class Pi18ProtocolAdapter : public ProtocolAdapter {
   bool UseCrcInQueries() override { return true; }
   void GetTotalGeneratedEnergy();
 
+  void SetInputVoltageRange(InputVoltageRange);
   void SetChargerPriority(ChargerPriority);
   void SetOutputSourcePriority(OutputSourcePriority);
   void SetBatteryType(BatteryType);
@@ -59,6 +60,11 @@ class Pi18ProtocolAdapter : public ProtocolAdapter {
   mqtt::BatteryType battery_type_{
       {BatteryType::kAgm, BatteryType::kFlooded, BatteryType::kUser},
       [this](BatteryType b) { SetBatteryType(b); }
+  };
+
+  mqtt::AcInputVoltageRangeSelector input_voltage_range_{
+      {InputVoltageRange::kAppliance, InputVoltageRange::kUps},
+      [this](InputVoltageRange r) { SetInputVoltageRange(r); }
   };
 
   mqtt::OutputSourcePrioritySelector output_source_priority_{

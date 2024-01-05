@@ -157,3 +157,23 @@ enum class InputVoltageRange : char {
   kAppliance,       // Appliance
   kUps,             // UPS
 };
+
+
+namespace impl_details {
+constexpr auto kAcVoltageRangeAppliance = "Appliance (90-280V)";
+constexpr auto kAcVoltageRangeUps = "UPS (170-280V)";
+}
+
+constexpr std::string ToString(InputVoltageRange type) {
+  switch (type) {
+    case InputVoltageRange::kAppliance: return impl_details::kAcVoltageRangeAppliance;
+    case InputVoltageRange::kUps: return impl_details::kAcVoltageRangeUps;
+  }
+  throw std::runtime_error(std::format("Unknown InputVoltageRange: {}", (int) type));
+}
+
+inline void FromString(const std::string& str, InputVoltageRange& result) {
+  if (str == impl_details::kAcVoltageRangeAppliance) { result = InputVoltageRange::kAppliance; return; }
+  if (str == impl_details::kAcVoltageRangeUps) { result = InputVoltageRange::kUps; return; }
+  throw std::runtime_error(std::format("Unexpected value for BatteryType: {}", str));
+}

@@ -19,6 +19,8 @@ class Pi30ProtocolAdapter : public ProtocolAdapter {
 
  protected:
   bool UseCrcInQueries() override { return true; }
+
+  void SetInputVoltageRange(InputVoltageRange);
   void SetChargerPriority(ChargerPriority);
   void SetOutputSourcePriority(OutputSourcePriority);
   void SetBatteryType(BatteryType);
@@ -51,6 +53,11 @@ class Pi30ProtocolAdapter : public ProtocolAdapter {
   mqtt::BatteryFloatVoltage battery_float_voltage_;
   mqtt::BatteryType battery_type_{
       {BatteryType::kAgm, BatteryType::kFlooded}, [this](BatteryType b) { SetBatteryType(b); }
+  };
+
+  mqtt::AcInputVoltageRangeSelector input_voltage_range_{
+      {InputVoltageRange::kAppliance, InputVoltageRange::kUps},
+      [this](InputVoltageRange r) { SetInputVoltageRange(r); }
   };
 
   mqtt::OutputSourcePrioritySelector output_source_priority_{

@@ -52,6 +52,15 @@ InputVoltageRange GetInputVoltageRange(int type) {
   }
 }
 
+/// Opposite to the previous function.
+std::string GetInputVoltageRange(InputVoltageRange r) {
+  switch (r) {
+    case InputVoltageRange::kAppliance: return "00";
+    case InputVoltageRange::kUps: return "01";
+  }
+  throw std::runtime_error(std::format("Unexpected InputVoltageRange: {}", ToString(r)));
+}
+
 OutputSourcePriority GetOutputSourcePriority(int type) {
   switch (type) {
     case 0: return OutputSourcePriority::kUtility;
@@ -307,5 +316,13 @@ void Pi30ProtocolAdapter::SetBatteryType(BatteryType t) {
   auto response = Query(std::format("POP{}", GetBatteryType(t)), "(");
   if (response != "ACK") {
     spdlog::error("Failed to set battery type to {}. Response: {}", ToString(t), response);
+  }
+}
+
+void Pi30ProtocolAdapter::SetInputVoltageRange(InputVoltageRange r) {
+  spdlog::warn("Set input voltage range to {}", ToString(r));
+  auto response = Query(std::format("PGR{}", GetInputVoltageRange(r)), "(");
+  if (response != "ACK") {
+    spdlog::error("Failed input voltage range to {}. Response: {}", ToString(r), response);
   }
 }
