@@ -20,7 +20,7 @@
 FROM alpine:latest AS build_image
 
 # Install required packages to build the inverter poller binary.
-RUN apk update && apk add --no-cache g++ make cmake openssl-dev
+RUN apk update && apk add --no-cache g++ make cmake openssl-dev git
 
 # Copy sources.
 COPY . /build/
