@@ -1,9 +1,11 @@
-This is a fork from [catalinbordan](https://github.com/catalinbordan/docker-voltronic-homeassistant) version (which, in turn, derives from [ned-kelly](https://github.com/ned-kelly/docker-voltronic-homeassistant) project). Please, check the origins for details.
+This is a fork from [catalinbordan](https://github.com/catalinbordan/docker-voltronic-homeassistant) version (which, in turn, derives from [ned-kelly](https://github.com/ned-kelly/docker-voltronic-homeassistant)
+project). Please, check the origins for details.
 
 The following changes were made:
 - Supports PI18 and PI30 protocols (each protocol exposes its own set of sensors in Home Assistant).
 - Protocol is detected automatically.
 - Reduced the size of the docker image.
+- Made some parameters as changeable right from Home Assistant.
 - Reduced the number of MQTT messages (only changed parameters are sent).
 - Polling interval is configurable.
 - Code simplified and rewritten on C++20 using [Google Style](https://google.github.io/styleguide/cppguide.html).
@@ -11,7 +13,6 @@ The following changes were made:
 
 <details><summary><b>This is WORK-IN-PROGRESS. Coming soon:</b></summary>
 
-- Raw commands are unsupported at the moment.
 - PI17 protocol support.
 - Interactive integration with HomeAssistant (change inverter parameters right from HomeAssistant).
 </details>
@@ -24,11 +25,15 @@ The following changes were made:
 
 ---
 
-This project [was derived](https://github.com/manio/skymax-demo) from the 'skymax' [C based monitoring application](https://skyboo.net/2017/03/monitoring-voltronic-power-axpert-mex-inverter-under-linux/) designed to take the monitoring data from Voltronic, Axpert, Mppsolar PIP, Voltacon, Effekta, and other branded OEM Inverters and send it to a [Home Assistant](https://www.home-assistant.io/) MQTT server for ingestion...
+This project [was derived](https://github.com/manio/skymax-demo) from the 'skymax' [C based monitoring application](https://skyboo.net/2017/03/monitoring-voltronic-power-axpert-mex-inverter-under-linux/) designed to
+take the monitoring data from Voltronic, Axpert, Mppsolar PIP, Voltacon, Effekta, and other branded
+OEM Inverters and send it to a [Home Assistant](https://www.home-assistant.io/) MQTT server for ingestion...
 
-The program can also receive commands from Home Assistant (via MQTT) to change the state of the inverter remotely.
+The program can also receive commands from Home Assistant (via MQTT) to change the state of the
+inverter remotely.
 
-By remotely setting values via MQTT you can implement many more complex forms of automation _(triggered from Home Assistant)_ such as:
+By remotely setting values via MQTT you can implement many more complex forms of automation
+_(triggered from Home Assistant)_ such as:
 
  - Changing the power mode to '_solar only_' during the day, but then change back to '_grid mode charging_' for your AGM or VLRA batteries in the evenings, but if it's raining (based on data from your weather station), set the charge mode to `PCP02` _(Charge based on 'Solar and Utility')_ so that the following day there's plenty of juice in your batteries...
 
@@ -38,13 +43,17 @@ By remotely setting values via MQTT you can implement many more complex forms of
 
 --------------------------------------------------
 
-The program is designed to be run in a Docker Container, and can be deployed on a lightweight SBC next to your Inverter (i.e. an Orange Pi Zero running Arabian), and read data via the RS232 or USB ports on the back of the Inverter.
+The program is designed to be run in a Docker Container, and can be deployed on a lightweight SBC
+next to your Inverter (i.e. an Orange Pi Zero running Arabian), and read data via the RS232 or USB
+ports on the back of the Inverter.
 
 ![Example Lovelace Dashboard](https://github.com/ned-kelly/docker-voltronic-homeassistant/raw/master/images/lovelace-dashboard.jpg "Example Lovelace Dashboard")
-_Example #1: My "Lovelace" dashboard using data collected from the Inverter & the ability to change modes/configuration via MQTT._
+_Example #1: My "Lovelace" dashboard using data collected from the Inverter & the ability to change
+modes/configuration via MQTT._
 
 ![Example Lovelace Dashboard](https://github.com/ned-kelly/docker-voltronic-homeassistant/raw/master/images/grafana-example.jpg "Example Grafana Dashboard")
-_Example #2: Grafana summary allowing more detailed analysis of data collected, and the ability to 'deep-dive' historical data._
+_Example #2: Grafana summary allowing more detailed analysis of data collected, and the ability to
+'deep-dive' historical data._
 
 
 ## Prerequisites
@@ -56,7 +65,8 @@ _Example #2: Grafana summary allowing more detailed analysis of data collected, 
 
 ## Configuration & Standing Up
 
-It's pretty straightforward, just clone down the sources and set the configuration files in the `config/` directory:
+It's pretty straightforward, just clone down the sources and set the configuration files in the
+`config/` directory:
 
 ```bash
 # Clone down sources on the host you want to monitor.
@@ -80,15 +90,12 @@ _**Note:**_
 
 ## Integrating into Home Assistant.
 
-Providing you have setup [MQTT](https://www.home-assistant.io/components/mqtt/) with Home Assistant, the device will automatically register in your Home Assistant when the container starts for the first time -- You do not need to manually define any sensors.
+Providing you have setup [MQTT](https://www.home-assistant.io/components/mqtt/) with Home Assistant,
+the device will be automatically registered in your Home Assistant when the container starts for the
+first time – you do not need to manually define any sensors.
 
-From here you can setup [Graphs](https://www.home-assistant.io/lovelace/history-graph/) to display sensor data, and optionally change state of the inverter by "[publishing](https://www.home-assistant.io/docs/mqtt/service/)" a string to the inverter's primary topic like so:
-
-![Example, Changing the Charge Priority](https://github.com/ned-kelly/docker-voltronic-homeassistant/raw/master/images/mqtt-publish-packet.png "Example, Changing the Charge Priority")
-_Example: Changing the Charge Priority of the Inverter_
-
-Raw commands that can be sent to the inverter depend on the protocol that is used by your inverter. 
-Protocols could be found here: https://github.com/ZaychukAleksey/voltronic-homeassistant/tree/master/protocols.
+From here you can setup [Graphs](https://www.home-assistant.io/lovelace/history-graph/) to display sensor data, and optionally change inverter
+parameters.
 
 ### Using `inverter_poller` binary directly
 
@@ -100,9 +107,12 @@ Please, run `./inverter_poller --help` to see supported commands/arguments.
 
 _**Please refer to the screenshot above for an example of the dashboard.**_
 
-I've included some Lovelace dashboard files in the `homeassistant/` directory, however you will need to need to adapt to your own Home Assistant configuration and/or name of the inverter if you have changed it in the `mqtt.json` config file.
+I've included some Lovelace dashboard files in the `homeassistant/` directory, however you will
+need to need to adapt to your own Home Assistant configuration and/or name of the inverter if you
+have changed it in the `mqtt.json` config file.
 
-Note that in addition to merging the sample Yaml files with your Home Assistant, you will need the following custom Lovelace cards installed if you wish to use my templates:
+Note that in addition to merging the sample Yaml files with your Home Assistant, you will need the
+following custom Lovelace cards installed if you wish to use my templates:
 
  - [vertical-stack-in-card](https://github.com/custom-cards/vertical-stack-in-card)
  - [circle-sensor-card](https://github.com/custom-cards/circle-sensor-card)

@@ -1,10 +1,3 @@
-cmake_minimum_required(VERSION 3.5)
-project("inverter_poller" LANGUAGES CXX)
-
-set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
-
 add_executable(inverter_poller)
 target_sources(inverter_poller
  PRIVATE
@@ -26,6 +19,10 @@ target_link_libraries(inverter_poller
   spdlog::spdlog
   paho-mqtt3as-static
   paho-mqttpp3-static
+)
+
+target_compile_definitions(inverter_poller
+  PRIVATE APP_NAME="${PROJECT_NAME}" APP_VERSION="${PROJECT_VERSION}"
 )
 
 target_link_options(inverter_poller PRIVATE -static-libgcc -static-libstdc++)

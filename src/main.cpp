@@ -15,8 +15,9 @@
 
 
 void PrintHelp() {
+  std::cout << APP_NAME << ' ' << APP_VERSION;
   std::cout <<
-"\nUSAGE:  ./inverter_poller <options>\n"
+"\nUSAGE:  ./inverter_poller <options>"
 "\nOPTIONS:"
 "\n    -r <raw-command>    Send 'raw' command to the inverter. Commands for a particular protocol could be found in \"documentation\" directory."
 "\n    --crc               Append CRC to the raw command."
