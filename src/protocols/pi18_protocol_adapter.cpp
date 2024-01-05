@@ -360,7 +360,7 @@ void Pi18ProtocolAdapter::SetOutputSourcePriority(OutputSourcePriority p) {
 void Pi18ProtocolAdapter::SetBatteryType(BatteryType t) {
   spdlog::warn("Set battery type to {}", ToString(t));
   auto response = Query(std::format("^S007PBT{}", GetBatteryType(t)), "^");
-  if (response != "ACK") {
+  if (response != "1") {
     spdlog::error("Failed to set battery type to {}. Response: {}", ToString(t), response);
   }
 }
@@ -368,7 +368,7 @@ void Pi18ProtocolAdapter::SetBatteryType(BatteryType t) {
 void Pi18ProtocolAdapter::SetInputVoltageRange(InputVoltageRange r) {
   spdlog::warn("Set input voltage range to {}", ToString(r));
   auto response = Query(std::format("^S007PGR{}", GetInputVoltageRange(r)), "^");
-  if (response != "ACK") {
+  if (response != "1") {
     spdlog::error("Failed input voltage range to {}. Response: {}", ToString(r), response);
   }
 }
