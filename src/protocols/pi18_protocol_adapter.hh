@@ -11,14 +11,12 @@ class Pi18ProtocolAdapter : public ProtocolAdapter {
   std::string GetSerialNumber() override;
   void QueryProtocolId() override { GetProtocolIdRaw(); };
   void GetRatedInfo() override;
-
-  void GetMode() override;
   void GetStatusInfo() override;
-  void GetWarnings() override;
 
  protected:
   bool UseCrcInQueries() override { return true; }
   void GetTotalGeneratedEnergy();
+  void GetWarnings();
 
   void SetInputVoltageRange(InputVoltageRange);
   void SetChargerPriority(ChargerPriority);
@@ -102,4 +100,6 @@ class Pi18ProtocolAdapter : public ProtocolAdapter {
   mqtt::PvVoltage pv_input_voltage_;
   mqtt::Pv2Voltage pv2_input_voltage_;
   mqtt::PvTotalGeneratedEnergy total_energy_;
+
+  mqtt::WarningsSensor warnings_;
 };

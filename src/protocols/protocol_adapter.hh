@@ -28,9 +28,7 @@ class ProtocolAdapter {
   virtual void GetRatedInfo() = 0;
 
   /// The current state of the inverter (volatile, instant metrics).
-  virtual void GetMode() = 0;
   virtual void GetStatusInfo() = 0;
-  virtual void GetWarnings() = 0;
 
  protected:
   ProtocolAdapter(SerialPort&&) = delete;

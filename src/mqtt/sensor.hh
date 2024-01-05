@@ -389,10 +389,9 @@ struct Mptt2ChargerTemperature : public TemperatureSensor {
   constexpr Mptt2ChargerTemperature() : TemperatureSensor("Mptt2_charger_temperature") {}
 };
 
-// Warnings sensor
-// TODO: find out how these will be handled. Like whether the inverter accumulates warnings and
-//  returns them once (and then "resets" them), or warnings aren't accumulated and shown only to
-//  reflect the current situation.
-// Warnings - const list of strings
+struct WarningsSensor : public TypedSensor<std::string> {
+  constexpr WarningsSensor() : TypedSensor("Warnings") {}
+  constexpr std::string_view Icon() const override { return "alert"; }
+};
 
 }  // namespace mqtt

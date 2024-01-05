@@ -149,11 +149,6 @@ constexpr DeviceMode GetDeviceMode(std::string_view mode) {
 Pi30ProtocolAdapter::Pi30ProtocolAdapter(const SerialPort& port)
     : ProtocolAdapter(port) {}
 
-void Pi30ProtocolAdapter::GetMode() {
-  const auto mode = GetDeviceModeRaw();
-  mode_.Update(GetDeviceMode(mode));
-}
-
 void Pi30ProtocolAdapter::GetRatedInfo() {
   auto str = GetDeviceRatingInformationRaw();
   if (str.length() < 80) {
@@ -222,10 +217,10 @@ void Pi30ProtocolAdapter::GetRatedInfo() {
   charger_source_priority_.Update(GetChargerPriority(charger_source_priority));
 }
 
+/* TODO: fix
 // TODO: print human-readable warnings. The problem is that different documents define completely
 //  different tables for them.
 void Pi30ProtocolAdapter::GetWarnings() {
-  /* TODO: fix
   auto str = GetDeviceWarningStatusRaw();
   for (auto c : str) {
     if (c == 1) {
@@ -235,8 +230,8 @@ void Pi30ProtocolAdapter::GetWarnings() {
   }
   // No warnings detected.
   return {};
-  */
 }
+ */
 
 void Pi30ProtocolAdapter::GetStatusInfo() {
   auto str = GetDeviceGeneralStatusRaw();
@@ -291,7 +286,9 @@ void Pi30ProtocolAdapter::GetStatusInfo() {
 
   inverter_heat_sink_temperature_.Update(inverter_heat_sink_temperature);
 
+  // Other status info.
   // TODO InfiniSolarE5.5KW supports total generated energy. Add it.
+  mode_.Update(GetDeviceMode(GetDeviceModeRaw()));
 }
 
 void Pi30ProtocolAdapter::SetChargerPriority(ChargerPriority p) {

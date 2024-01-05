@@ -70,11 +70,9 @@ int main(int argc, char* argv[]) {
 
   const bool run_once = arguments.IsSet("-1", "--run-once");
   while (true) {
-    adapter->GetMode();
     // TODO: query rated info only when changes are expected.
     adapter->GetRatedInfo();
     adapter->GetStatusInfo();
-    adapter->GetWarnings();
 
     if (run_once) {
       break;

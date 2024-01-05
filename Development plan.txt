@@ -1,7 +1,7 @@
 0. Fix Paho MQTT library?
 
 3. Add sensors for serial number, firmware versions, etc.
-4. Add sensors for warnings.
+4. Add "warnings" sensor for PI30.
 6. Sensors: Battery re-charged and re-discharged voltage when utility is available.
 7. Sensor: solar power priority.
 8. Sensor: battery cut-off voltage.

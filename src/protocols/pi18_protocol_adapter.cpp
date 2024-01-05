@@ -3,9 +3,19 @@
 #include <format>
 
 #include "spdlog/spdlog.h"
-#include "utils.h"
 
 namespace {
+
+std::string Concatenate(const std::vector<std::string>& strings, char separator = ',') {
+  std::string result;
+  for (auto& s : strings) {
+    if (!result.empty()) {
+      result += separator;
+    }
+    result.append(s);
+  }
+  return result;
+}
 
 BatteryType GetBatteryType(int type) {
   switch (type) {
@@ -151,11 +161,6 @@ std::string Pi18ProtocolAdapter::GetGeneratedEnergyOfDayRaw(
   return Query(std::format("^P013ED{}{}{}", year, month, day), "^D011");
 }
 
-void Pi18ProtocolAdapter::GetMode() {
-  const auto mode = GetWorkingModeRaw();
-  mode_.Update(GetDeviceMode(mode));
-}
-
 void Pi18ProtocolAdapter::GetRatedInfo() {
   // Special case. According to the protocol, the length is 85. But my inverter returns 89.
   // Therefore I can't check it as a prefix and have to skip it here.
@@ -276,7 +281,8 @@ void Pi18ProtocolAdapter::GetWarnings() {
   if (data[14]) result.emplace_back("MPPT2 overload warning");
   if (data[15]) result.emplace_back("Battery too low to charge for SCC1");
   if (data[16]) result.emplace_back("Battery too low to charge for SCC2");
-//  return result;
+
+  warnings_.Update(Concatenate(result, '\n'));
 }
 
 void Pi18ProtocolAdapter::GetStatusInfo() {
@@ -325,9 +331,12 @@ void Pi18ProtocolAdapter::GetStatusInfo() {
   // data[26] - Line power direction (0: donothing, 1: input, 2: output)
   // data[27] - Local parallel ID (a: 0~(parallel number - 1))
 
+  // Other status info.
   // TODO: Total generated energy is temporarily disabled since at some point the inverter starts
   //  sending rubbish with incorrect CRC.
   // GetTotalGeneratedEnergy();
+  mode_.Update(GetDeviceMode(GetWorkingModeRaw()));
+  GetWarnings();
 }
 
 void Pi18ProtocolAdapter::GetTotalGeneratedEnergy() {

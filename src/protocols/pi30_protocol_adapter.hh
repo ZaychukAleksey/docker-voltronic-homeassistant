@@ -12,10 +12,7 @@ class Pi30ProtocolAdapter : public ProtocolAdapter {
   void QueryProtocolId() override { GetDeviceProtocolIdRaw(); };
 
   void GetRatedInfo() override;
-
-  void GetMode() override;
   void GetStatusInfo() override;
-  void GetWarnings() override;
 
  protected:
   bool UseCrcInQueries() override { return true; }
