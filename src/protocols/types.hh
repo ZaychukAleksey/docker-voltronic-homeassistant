@@ -175,5 +175,29 @@ constexpr std::string ToString(InputVoltageRange type) {
 inline void FromString(const std::string& str, InputVoltageRange& result) {
   if (str == impl_details::kAcVoltageRangeAppliance) { result = InputVoltageRange::kAppliance; return; }
   if (str == impl_details::kAcVoltageRangeUps) { result = InputVoltageRange::kUps; return; }
-  throw std::runtime_error(std::format("Unexpected value for BatteryType: {}", str));
+  throw std::runtime_error(std::format("Unexpected value for InputVoltageRange: {}", str));
+}
+
+enum class SolarPowerPriority : char {
+  kBatteryLoadUtility,
+  kLoadBatteryUtility,
+};
+
+namespace impl_details {
+constexpr auto kSpPriorityBLU = "Battery->Load->Utility";
+constexpr auto kSpPriorityLBU = "Load->Battery->Utility";
+}
+
+constexpr std::string ToString(SolarPowerPriority type) {
+  switch (type) {
+    case SolarPowerPriority::kBatteryLoadUtility: return impl_details::kSpPriorityBLU;
+    case SolarPowerPriority::kLoadBatteryUtility: return impl_details::kSpPriorityLBU;
+  }
+  throw std::runtime_error(std::format("Unknown SolarPowerPriority: {}", (int) type));
+}
+
+inline void FromString(const std::string& str, SolarPowerPriority& result) {
+  if (str == impl_details::kSpPriorityBLU) { result = SolarPowerPriority::kBatteryLoadUtility; return; }
+  if (str == impl_details::kSpPriorityLBU) { result = SolarPowerPriority::kLoadBatteryUtility; return; }
+  throw std::runtime_error(std::format("Unexpected value for SolarPowerPriority: {}", str));
 }

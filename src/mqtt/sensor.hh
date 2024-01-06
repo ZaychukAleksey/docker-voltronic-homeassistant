@@ -373,6 +373,11 @@ struct ChargerSourcePrioritySelector : public Selector<ChargerPriority> {
       : Selector("Charger_source_priority", priorities, std::move(callback)) {}
 };
 
+struct SolarPowerPrioritySelector : public Selector<SolarPowerPriority> {
+  SolarPowerPrioritySelector(Items priorities, OnSelectedCallback&& callback)
+      : Selector("Solar_power_priority", priorities, std::move(callback)) {}
+};
+
 ///=================================================================================================
 /// Various info.
 ///=================================================================================================

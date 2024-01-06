@@ -22,6 +22,7 @@ class Pi18ProtocolAdapter : public ProtocolAdapter {
   void SetChargerPriority(ChargerPriority);
   void SetOutputSourcePriority(OutputSourcePriority);
   void SetBatteryType(BatteryType);
+  void SetSolarPowerPriority(SolarPowerPriority);
 
   std::string GetProtocolIdRaw() { return Query("^P005PI", "^D00518"); }
   std::string GetCurrentTimeRaw() { return Query("^P005PI", "^D017"); }
@@ -74,6 +75,11 @@ class Pi18ProtocolAdapter : public ProtocolAdapter {
        ChargerPriority::kSolarAndUtility,
        ChargerPriority::kOnlySolar},
        [this](ChargerPriority p) { SetChargerPriority(p); }
+  };
+
+  mqtt::SolarPowerPrioritySelector solar_power_priority_{
+      {SolarPowerPriority::kBatteryLoadUtility, SolarPowerPriority::kLoadBatteryUtility},
+      [this](SolarPowerPriority p) { SetSolarPowerPriority(p); }
   };
 
   // Instant metrics.

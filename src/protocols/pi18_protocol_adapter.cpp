@@ -127,6 +127,23 @@ constexpr DeviceMode GetDeviceMode(std::string_view mode) {
   throw std::runtime_error(std::format("Unknown device mode: {}", mode));
 }
 
+SolarPowerPriority GetSolarPowerPriority(int type) {
+  switch (type) {
+    case 0: return SolarPowerPriority::kBatteryLoadUtility;
+    case 1: return SolarPowerPriority::kLoadBatteryUtility;
+    default: throw std::runtime_error(std::format("Unknown SolarPowerPriority: {}", type));
+  }
+}
+
+/// Opposite to the previous function.
+int GetSolarPowerPriority(SolarPowerPriority p) {
+  switch (p) {
+    case SolarPowerPriority::kBatteryLoadUtility: return 0;
+    case SolarPowerPriority::kLoadBatteryUtility: return 1;
+    default: throw std::runtime_error(std::format("Unexpected SolarPowerPriority: {}", ToString(p)));
+  }
+}
+
 }  // namespace
 
 
@@ -204,7 +221,7 @@ void Pi18ProtocolAdapter::GetRatedInfo() {
   // machine_type = GetMachineType(data[20]);
   // topology = GetTopology(data[21]);
   // output_mode = GetOutputMode(data[22]);
-  // (Unused) data[23] - Solar power priority (0: Battery-Load-Utility, 1: Load-Battery-Utility)
+  solar_power_priority_.Update(GetSolarPowerPriority(data[23]));
   // (Unused) data[24] - MPPT string
   // (Unused) data[25] - ??? There is no such param according to the protocol, but my inverter
   // returns it.
@@ -378,6 +395,14 @@ void Pi18ProtocolAdapter::SetInputVoltageRange(InputVoltageRange r) {
   spdlog::warn("Set input voltage range to {}", ToString(r));
   auto response = Query(std::format("^S007PGR{}", GetInputVoltageRange(r)), "^");
   if (response != "1") {
-    spdlog::error("Failed input voltage range to {}. Response: {}", ToString(r), response);
+    spdlog::error("Failed to set input voltage range to {}. Response: {}", ToString(r), response);
+  }
+}
+
+void Pi18ProtocolAdapter::SetSolarPowerPriority(SolarPowerPriority p) {
+  spdlog::warn("Set solar power priority to {}", ToString(p));
+  auto response = Query(std::format("^S007PSP{}", GetSolarPowerPriority(p)), "^");
+  if (response != "1") {
+    spdlog::error("Failed to set solar power priority to {}. Response: {}", ToString(p), response);
   }
 }

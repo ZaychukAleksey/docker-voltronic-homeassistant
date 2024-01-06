@@ -13,3 +13,8 @@
 15. Sensor: battery maximum charge voltage.
 16. Sensor: "AC output rated voltage". What is it? Protocol isn't clear enough.
 17. Fix: selector isn't updated in HA when we failed to send the command to the inverter.
+
+
+Bug (deadlock)
+  voltronic-mqtt    | [11:45:17.102 debug] Message on homeassistant/select/SILA_3600MH_96122208100022/Battery_type/state: AGM
+  voltronic-mqtt    | [11:45:17.102 debug] Subscribing to homeassistant/select/SILA_3600MH_96122208100022/Charger_source_priority/state...
