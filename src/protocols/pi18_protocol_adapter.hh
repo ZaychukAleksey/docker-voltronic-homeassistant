@@ -82,6 +82,8 @@ class Pi18ProtocolAdapter : public ProtocolAdapter {
       [this](SolarPowerPriority p) { SetSolarPowerPriority(p); }
   };
 
+  mqtt::MachineTypeSelector machine_type_;
+
   // Instant metrics.
   mqtt::GridVoltage grid_voltage_;
   mqtt::GridFrequency grid_frequency_;

@@ -218,9 +218,9 @@ void Pi18ProtocolAdapter::GetRatedInfo() {
   output_source_priority_.Update(GetOutputSourcePriority(data[17]));
   charger_source_priority_.Update(GetChargerPriority(data[18]));
   // parallel_max_num = data[19];
-  // machine_type = GetMachineType(data[20]);
+  machine_type_.Update(GetMachineType(data[20]));
   // topology = GetTopology(data[21]);
-  // output_mode = GetOutputMode(data[22]);
+  // output_mode = GetOutputMode(data[22]); Single module, parallel output, Phase 1 of three phase...
   solar_power_priority_.Update(GetSolarPowerPriority(data[23]));
   // (Unused) data[24] - MPPT string
   // (Unused) data[25] - ??? There is no such param according to the protocol, but my inverter

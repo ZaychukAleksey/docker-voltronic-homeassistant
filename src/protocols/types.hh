@@ -148,6 +148,29 @@ enum class MachineType : char {
   kHybrid,          //  Hybrid
 };
 
+namespace impl_details {
+constexpr auto kMachineTypeGridTie = "Grid-tie";
+constexpr auto kMachineTypeOffGrid = "Off-grid";
+constexpr auto kMachineTypeHybrid = "Hybrid";
+}
+
+constexpr std::string ToString(MachineType type) {
+  switch (type) {
+    case MachineType::kGridTie: return impl_details::kMachineTypeGridTie;
+    case MachineType::kOffGrid: return impl_details::kMachineTypeOffGrid;
+    case MachineType::kHybrid: return impl_details::kMachineTypeHybrid;
+  }
+  throw std::runtime_error(std::format("Unknown MachineType: {}", (int) type));
+}
+
+inline void FromString(const std::string& str, MachineType& result) {
+  if (str == impl_details::kMachineTypeGridTie) { result = MachineType::kGridTie; return; }
+  if (str == impl_details::kMachineTypeOffGrid) { result = MachineType::kOffGrid; return; }
+  if (str == impl_details::kMachineTypeHybrid) { result = MachineType::kHybrid; return; }
+  throw std::runtime_error(std::format("Unexpected value for MachineType: {}", str));
+}
+
+
 enum class Topology : char {
   kTransformless,   //  transformerless
   kTransformer,     //  transformer

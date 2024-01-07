@@ -28,7 +28,7 @@ class SerialPort {
   /// @param query - see Send().
   /// @param with_crc - see Send().
   /// @param n_retries how many times to retry the query in case if CRC doesn't match.
-  std::string Query(std::string_view query, bool with_crc, int n_retries = 5) const;
+  std::string Query(std::string_view query, bool with_crc, int n_retries = 10) const;
 
  private:
   int file_descriptor_;

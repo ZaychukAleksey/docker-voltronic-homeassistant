@@ -351,6 +351,11 @@ struct InverterMode : public TypedSensor<DeviceMode> {
   constexpr InverterMode() : TypedSensor("Mode") {}
 };
 
+// TODO That will be a selector
+struct MachineTypeSelector : public TypedSensor<MachineType> {
+  constexpr MachineTypeSelector() : TypedSensor("Machine_type") {}
+};
+
 /// The AC-Input terminal of the off-grid inverters accepts a wide range of sinusoidal voltages.
 /// The APL and UPS modes will allow a wider or narrower selection of voltages.
 struct AcInputVoltageRangeSelector : public Selector<InputVoltageRange> {
