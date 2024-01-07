@@ -25,6 +25,7 @@ class Pi18ProtocolAdapter : public ProtocolAdapter {
   bool SetBatteryType(BatteryType);
   bool SetSolarPowerPriority(SolarPowerPriority);
   bool TurnBacklight(bool /* on/off */);
+  bool TurnLoadConnection(bool /* on/off */);
 
   // TODO: move these out of the header
   std::string GetProtocolIdRaw() { return Query("^P005PI", "^D00518"); }
@@ -114,4 +115,5 @@ class Pi18ProtocolAdapter : public ProtocolAdapter {
   mqtt::WarningsSensor warnings_;
 
   mqtt::Switch backlight_{"Backlight", [this](bool state) { return TurnBacklight(state); }};
+  mqtt::Switch load_connection_{"Load_connection", [this](bool state) { return TurnLoadConnection(state); }};
 };

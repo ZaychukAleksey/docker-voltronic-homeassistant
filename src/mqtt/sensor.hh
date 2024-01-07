@@ -64,6 +64,9 @@ class Sensor {
 template<typename ValueType>
 class TypedSensor : public Sensor {
  public:
+  constexpr TypedSensor(std::string_view name, Kind device_class = Kind::kNone)
+      : Sensor(name, device_class) {}
+
   /// Set and update sensor's value in HomeAssistant.
   /// Does nothing if the new value is the same as the previous one.
   void Update(ValueType new_value) {
@@ -80,9 +83,6 @@ class TypedSensor : public Sensor {
   }
 
  protected:
-  constexpr TypedSensor(std::string_view name, Kind device_class = Kind::kNone)
-      : Sensor(name, device_class) {}
-
   std::optional<ValueType> GetValue() const {
     std::lock_guard lock(mutex_);
     return value_;

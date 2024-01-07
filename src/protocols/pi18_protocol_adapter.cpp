@@ -344,7 +344,7 @@ void Pi18ProtocolAdapter::GetStatusInfo() {
   // data[20] - Setting value configuration state (0: Nothing changed, 1: Something changed)
   // data[21] - MPPT1 charger status (0: abnormal, 1: normal but not charged, 2: charging)
   // data[22] - MPPT2 charger status (0: abnormal, 1: normal but not charged, 2: charging)
-  // data[23] - Load connection (0: disconnect, 1: connect)
+  load_connection_.Update(data[23]);  // Load connection (0: disconnect, 1: connect)
   // data[24] - Battery power direction (0: donothing, 1: charge, 2: discharge)
   // data[25] - DC/AC power direction (0: donothing, 1: AC-DC, 2: DC-AC)
   // data[26] - Line power direction (0: donothing, 1: input, 2: output)
@@ -424,5 +424,12 @@ bool Pi18ProtocolAdapter::TurnBacklight(bool state) {
   const std::string_view flag = state ? "E" : "D";
   return SetParam("backlight", state,
                   [&] { return Query(std::format("^S006P{}F", flag), "^"); },
+                  kCommandAccepted);
+}
+
+bool Pi18ProtocolAdapter::TurnLoadConnection(bool on) {
+  const std::string_view flag = on ? "1" : "0";
+  return SetParam("load connection", on,
+                  [&] { return Query(std::format("^S007LON{}", flag), "^"); },
                   kCommandAccepted);
 }
