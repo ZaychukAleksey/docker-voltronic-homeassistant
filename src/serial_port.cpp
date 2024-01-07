@@ -186,6 +186,12 @@ std::string SerialPort::Query(std::string_view query, bool with_crc, int n_retri
     } catch (const CrcMismatchException&) {
       if (--n_retries <= 0) throw;
       usleep(500000);
+    } catch (const TimeoutException&) {
+      // Sometimes the ending carriage return byte is corrupted, so Receive() doesn't meet it and
+      // awaits more data (essentially that's a situation when CrcMismatchException should be thrown
+      // instead).
+      if (--n_retries <= 0) throw;
+      usleep(500000);
     }
   }
 }
