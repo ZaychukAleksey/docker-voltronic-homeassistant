@@ -5,6 +5,8 @@
 
 #include "serial_port.hh"
 #include "protocol.hh"
+#include "spdlog/spdlog.h"
+#include "utils.h"
 
 
 class ProtocolAdapter {
@@ -37,6 +39,19 @@ class ProtocolAdapter {
   virtual bool UseCrcInQueries() = 0;
   std::string Query(std::string_view query, std::string_view expected_response_prefix = "");
 
+  template<typename ValueType>
+  [[nodiscard]] bool SetParam(std::string_view name,
+                              const ValueType& value,
+                              auto implementation_callback,
+                              std::string_view expected_response) const {
+    spdlog::warn("Set {} to {}", name, utils::ToString(value));
+    auto response = implementation_callback();
+    if (response != expected_response) {
+      spdlog::error("Failed to set {} to {}. Response: {}", name, utils::ToString(value), response);
+      return false;
+    }
+    return true;
+  }
 
   const SerialPort& port_;
 };

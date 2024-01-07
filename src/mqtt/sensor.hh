@@ -13,6 +13,7 @@
 namespace mqtt {
 
 
+/// https://www.home-assistant.io/integrations/mqtt/#mqtt-discovery
 /// https://www.home-assistant.io/integrations/sensor.mqtt/
 class Sensor {
  public:
@@ -64,6 +65,7 @@ template<typename ValueType>
 class TypedSensor : public Sensor {
  public:
   /// Set and update sensor's value in HomeAssistant.
+  /// Does nothing if the new value is the same as the previous one.
   void Update(ValueType new_value) {
     std::lock_guard lock(mutex_);
 
@@ -86,26 +88,14 @@ class TypedSensor : public Sensor {
     return value_;
   }
 
-  /// Set sensor's value without updating it in HomeAssistant.
-  void SetValue(ValueType new_value) {
-    std::lock_guard lock(mutex_);
-    value_ = new_value;
-  }
-
   std::string ValueToString() const override {
-    if constexpr (std::is_arithmetic_v<ValueType>) {
-      return std::format("{}", *value_);
-    } else if constexpr (std::is_enum_v<ValueType>) {
-      return std::string(ToString(*value_));
-    } else if constexpr (std::is_same_v<ValueType, std::string>) {
-      return *value_;
-    } else {
-      throw std::runtime_error("Unknown sensor type");
-    }
+    return utils::ToString(*value_);
   }
 
   static ValueType ValueFromString(const std::string& str) {
-    if constexpr (std::is_integral_v<ValueType>) {
+    if constexpr (std::is_same_v<ValueType, bool>) {
+      return str == "1";
+    } else if constexpr (std::is_integral_v<ValueType>) {
       return std::stoi(str);
     } else if constexpr (std::is_floating_point_v<ValueType>) {
       return std::stof(str);
@@ -130,42 +120,80 @@ void SubscribeToTopic(const std::string&, std::function<void(const std::string)>
 
 }  // namespace implementation_details
 
+
+/// Base class for sensors that allow to change it's state from Home Assistant interface.
+template<typename ValueType>
+class InteractiveTypedSensor : public TypedSensor<ValueType> {
+ public:
+  /// @return true, if successful, false otherwise
+  using OnChangedCallback = std::function<bool(ValueType)>;
+ protected:
+  constexpr InteractiveTypedSensor(std::string_view name, OnChangedCallback&& on_value_changed)
+      : TypedSensor<ValueType>(name),
+        on_value_changed_(std::move(on_value_changed)) {}
+
+  virtual std::string_view Type() const = 0;
+  virtual std::string AdditionalRegistrationOptions() const = 0;
+  virtual std::string CommandTopic() const { return std::format("{}/command", this->TopicRoot()); }
+
+  void OnRegisterSuccessful() final {
+    auto OnMessageArrived = [this](const std::string& new_value) {
+      auto selected_value = this->ValueFromString(new_value);
+      auto previous_value = this->GetValue();
+      if (!previous_value.has_value() || previous_value == selected_value) return;
+
+      if (on_value_changed_(selected_value)) {
+        // Value has been successfully changed. Update it.
+        this->Update(selected_value);
+      } else {
+        // Failed to change the value. Publish the previous one.
+        std::lock_guard lock(Sensor::mutex_);
+        this->Publish();
+      }
+    };
+    implementation_details::SubscribeToTopic(this->CommandTopic(), std::move(OnMessageArrived));
+  }
+
+  OnChangedCallback on_value_changed_;
+};
+
+
+/// https://www.home-assistant.io/integrations/switch.mqtt/
+class Switch : public InteractiveTypedSensor<bool> {
+ public:
+  Switch(std::string_view name, OnChangedCallback&& value_selected_callback)
+      : InteractiveTypedSensor<bool>(name, std::move(value_selected_callback)) {}
+
+ protected:
+  constexpr std::string_view Type() const final { return "switch"; }
+  std::string AdditionalRegistrationOptions() const final {
+    return std::format(R"("command_topic":"{}","payload_on":1,"payload_off":0)", CommandTopic());
+  }
+};
+
+
 /// https://www.home-assistant.io/integrations/select.mqtt/
 template<typename Enum> requires std::is_enum_v<Enum>
-class Selector : public TypedSensor<Enum> {
+class Selector : public InteractiveTypedSensor<Enum> {
  public:
   using Items = std::initializer_list<Enum>;
-  using OnSelectedCallback = std::function<void(Enum)>;
+  using OnSelectedCallback = InteractiveTypedSensor<Enum>::OnChangedCallback;
  protected:
   constexpr Selector(std::string_view name,
                      std::vector<Enum>&& selectable_options,
                      OnSelectedCallback&& value_selected_callback)
-      : TypedSensor<Enum>(name),
-        selectable_options_(std::move(selectable_options)),
-        on_value_selected_(std::move(value_selected_callback)) {}
+      : InteractiveTypedSensor<Enum>(name, std::move(value_selected_callback)),
+        selectable_options_(std::move(selectable_options)) {}
 
   constexpr std::string_view Type() const final { return "select"; }
+  std::string CommandTopic() const final { return this->StateTopic(); }
   std::string AdditionalRegistrationOptions() const final {
-    return std::format(R"("command_topic":"{}", "options":[{}])", this->StateTopic(),
-                       Concatenate(selectable_options_));
+    return std::format(R"("command_topic":"{}", "options":[{}])", this->CommandTopic(),
+                       utils::Concatenate(selectable_options_));
   }
 
-  void OnRegisterSuccessful() override {
-    auto OnMessageArrived = [this](const std::string& new_value) {
-      Enum selected_value = this->ValueFromString(new_value);
-      if (this->GetValue() != selected_value) {
-        auto previous_value = this->GetValue();
-        if (previous_value.has_value() && *previous_value != selected_value) {
-          on_value_selected_(selected_value);
-        }
-        this->SetValue(selected_value);
-      }
-    };
-    implementation_details::SubscribeToTopic(this->StateTopic(), std::move(OnMessageArrived));
-  }
-
+ private:
   const std::vector<Enum> selectable_options_;
-  std::function<void(Enum)> on_value_selected_;
 };
 
 class AcVoltageSensor : public TypedSensor<float> {

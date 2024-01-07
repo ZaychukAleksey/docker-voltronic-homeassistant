@@ -111,7 +111,7 @@ void SerialPort::Send(std::string_view query, bool with_crc) const {
     data += GetCRC(data);
   }
   data += '\r';  // Each query must end with carriage return (<cr>).
-  spdlog::debug("Send: '{}', hex: {}.", EscapeString(data), PrintBytesAsHex(data));
+  spdlog::debug("Send: '{}', hex: {}.", utils::EscapeString(data), utils::PrintBytesAsHex(data));
 
   // The code below sends data by 8-bytes chunks. It has to do with low speed USB specifications.
   int bytes_sent = 0;
@@ -152,7 +152,7 @@ std::string SerialPort::Receive(int timeout_in_seconds) const {
 
     const std::string_view data{&buffer[bytes_read], static_cast<std::size_t>(n_bytes)};
     spdlog::debug("Read {} bytes: '{}', hex: {}.",
-                  n_bytes, EscapeString(data), PrintBytesAsHex(data));
+                  n_bytes, utils::EscapeString(data), utils::PrintBytesAsHex(data));
     bytes_read += n_bytes;
     // Replies end with a carriage return (<cr>)
     if (data.back() == '\r') {

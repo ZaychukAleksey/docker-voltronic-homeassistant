@@ -2,11 +2,12 @@
 
 #include <format>
 
-#include "spdlog/spdlog.h"
 #include "exceptions.h"
 
 
 namespace {
+
+const auto kCommandAccepted = "ACK";
 
 //Generate 8 bit CRC of supplied string + 1 as used in REVO PI30 protocol
 //CHK=DATE0+....+1
@@ -291,35 +292,26 @@ void Pi30ProtocolAdapter::GetStatusInfo() {
   mode_.Update(GetDeviceMode(GetDeviceModeRaw()));
 }
 
-void Pi30ProtocolAdapter::SetChargerPriority(ChargerPriority p) {
-  spdlog::warn("Set charger priority to {}", ToString(p));
-  auto response = Query(std::format("PCP{}", GetChargerPriority(p)), "(");
-  if (response != "ACK") {
-    spdlog::error("Failed to set charger priority to {}. Response: {}", ToString(p), response);
-  }
+bool Pi30ProtocolAdapter::SetChargerPriority(ChargerPriority p) {
+  return SetParam("charger priority", p,
+                  [&] { return Query(std::format("PCP{}", GetChargerPriority(p)), "("); },
+                  kCommandAccepted);
 }
 
-void Pi30ProtocolAdapter::SetOutputSourcePriority(OutputSourcePriority p) {
-  spdlog::warn("Set output source priority to {}", ToString(p));
-  auto response = Query(std::format("POP{}", GetOutputSourcePriority(p)), "(");
-  if (response != "ACK") {
-    spdlog::error("Failed to set output source priority to {}. Response: {}", ToString(p), response);
-  }
+bool Pi30ProtocolAdapter::SetOutputSourcePriority(OutputSourcePriority p) {
+  return SetParam("output source priority", p,
+                  [&] { return Query(std::format("POP{}", GetOutputSourcePriority(p)), "("); },
+                  kCommandAccepted);
 }
 
-void Pi30ProtocolAdapter::SetBatteryType(BatteryType t) {
-  spdlog::warn("Set battery type to {}", ToString(t));
-  //  for InfiniSolar its "LBF"...
-  auto response = Query(std::format("POP{}", GetBatteryType(t)), "(");
-  if (response != "ACK") {
-    spdlog::error("Failed to set battery type to {}. Response: {}", ToString(t), response);
-  }
+bool Pi30ProtocolAdapter::SetBatteryType(BatteryType t) {
+  return SetParam("battery type", t,
+                  [&] { return Query(std::format("POP{}", GetBatteryType(t)), "("); },
+                  kCommandAccepted);
 }
 
-void Pi30ProtocolAdapter::SetInputVoltageRange(InputVoltageRange r) {
-  spdlog::warn("Set input voltage range to {}", ToString(r));
-  auto response = Query(std::format("PGR{}", GetInputVoltageRange(r)), "(");
-  if (response != "ACK") {
-    spdlog::error("Failed input voltage range to {}. Response: {}", ToString(r), response);
-  }
+bool Pi30ProtocolAdapter::SetInputVoltageRange(InputVoltageRange r) {
+  return SetParam("battery type", r,
+                  [&] { return Query(std::format("PGR{}", GetInputVoltageRange(r)), "("); },
+                  kCommandAccepted);
 }

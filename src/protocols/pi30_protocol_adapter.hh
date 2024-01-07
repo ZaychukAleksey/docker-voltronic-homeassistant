@@ -17,10 +17,10 @@ class Pi30ProtocolAdapter : public ProtocolAdapter {
  protected:
   bool UseCrcInQueries() override { return true; }
 
-  void SetInputVoltageRange(InputVoltageRange);
-  void SetChargerPriority(ChargerPriority);
-  void SetOutputSourcePriority(OutputSourcePriority);
-  void SetBatteryType(BatteryType);
+  bool SetInputVoltageRange(InputVoltageRange);
+  bool SetChargerPriority(ChargerPriority);
+  bool SetOutputSourcePriority(OutputSourcePriority);
+  bool SetBatteryType(BatteryType);
 
   std::string GetDeviceProtocolIdRaw() { return Query("QPI", "(PI"); }
   std::string GetSerialNumberRaw() { return Query("QID", "("); }
@@ -49,26 +49,27 @@ class Pi30ProtocolAdapter : public ProtocolAdapter {
   mqtt::BatteryBulkVoltage battery_bulk_voltage_;
   mqtt::BatteryFloatVoltage battery_float_voltage_;
   mqtt::BatteryType battery_type_{
-      {BatteryType::kAgm, BatteryType::kFlooded}, [this](BatteryType b) { SetBatteryType(b); }
+      {BatteryType::kAgm, BatteryType::kFlooded},
+      [this](BatteryType b) { return SetBatteryType(b); }
   };
 
   mqtt::AcInputVoltageRangeSelector input_voltage_range_{
       {InputVoltageRange::kAppliance, InputVoltageRange::kUps},
-      [this](InputVoltageRange r) { SetInputVoltageRange(r); }
+      [this](InputVoltageRange r) { return SetInputVoltageRange(r); }
   };
 
   mqtt::OutputSourcePrioritySelector output_source_priority_{
       {OutputSourcePriority::kUtility,
        OutputSourcePriority::kSolarUtilityBattery,
        OutputSourcePriority::kSolarBatteryUtility},
-      [this](OutputSourcePriority p) { SetOutputSourcePriority(p); }
+      [this](OutputSourcePriority p) { return SetOutputSourcePriority(p); }
   };
   mqtt::ChargerSourcePrioritySelector charger_source_priority_{
       {ChargerPriority::kUtilityFirst,
        ChargerPriority::kSolarFirst,
        ChargerPriority::kSolarAndUtility,
        ChargerPriority::kOnlySolar},
-      [this](ChargerPriority p) { SetChargerPriority(p); }
+      [this](ChargerPriority p) { return SetChargerPriority(p); }
   };
 
   mqtt::GridVoltage grid_voltage_;

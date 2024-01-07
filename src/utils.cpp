@@ -5,6 +5,8 @@
 #include <stdexcept>
 
 
+namespace utils {
+
 std::string PrintBytesAsHex(std::string_view str) {
   // Each input symbol will be turned into 2 hex symbols + whitespace
   std::string result;
@@ -61,3 +63,5 @@ unsigned AsDigit(char c) {
   }
   return static_cast<unsigned>(c - '0');
 }
+
+}  // namespace utils

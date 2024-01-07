@@ -17,15 +17,18 @@ class Pi18ProtocolAdapter : public ProtocolAdapter {
   bool UseCrcInQueries() override { return true; }
   void GetTotalGeneratedEnergy();
   void GetWarnings();
+  void GetFlagsStatus();
 
-  void SetInputVoltageRange(InputVoltageRange);
-  void SetChargerPriority(ChargerPriority);
-  void SetOutputSourcePriority(OutputSourcePriority);
-  void SetBatteryType(BatteryType);
-  void SetSolarPowerPriority(SolarPowerPriority);
+  bool SetInputVoltageRange(InputVoltageRange);
+  bool SetChargerPriority(ChargerPriority);
+  bool SetOutputSourcePriority(OutputSourcePriority);
+  bool SetBatteryType(BatteryType);
+  bool SetSolarPowerPriority(SolarPowerPriority);
+  bool TurnBacklight(bool /* on/off */);
 
+  // TODO: move these out of the header
   std::string GetProtocolIdRaw() { return Query("^P005PI", "^D00518"); }
-  std::string GetCurrentTimeRaw() { return Query("^P005PI", "^D017"); }
+  std::string GetCurrentTimeRaw() { return Query("^P004T", "^D017"); }
   std::string GetTotalGeneratedEnergyRaw() { return Query("^P005ET", "^D011"); }
   std::string GetGeneratedEnergyOfYearRaw(std::string_view year);
   std::string GetGeneratedEnergyOfMonthRaw(std::string_view year, std::string_view month);
@@ -37,7 +40,6 @@ class Pi18ProtocolAdapter : public ProtocolAdapter {
   std::string GetGeneralStatusRaw() { return Query("^P005GS", "^D106"); }
   std::string GetWorkingModeRaw() { return Query("^P006MOD", "^D005"); }
   std::string GetFaultAndWarningStatusRaw() { return Query("^P005FWS", "^D0"); }
-  std::string GetEnableDisableFlagStatusRaw() { return Query("^P007FLAG", "^D020"); }
   std::string GetDefaultValueOfChangeableParameterRaw() { return Query("^P005DI", "^D068"); }
   std::string GetMaxChargingCurrentSelectableValueRaw() { return Query("^P009MCHGCR", "^D030"); }
   std::string GetMaxAcChargingCurrentSelectableValueRaw() { return Query("^P010MUCHGCR", "^D030"); }
@@ -58,28 +60,28 @@ class Pi18ProtocolAdapter : public ProtocolAdapter {
   mqtt::BatteryFloatVoltage battery_float_voltage_;
   mqtt::BatteryType battery_type_{
       {BatteryType::kAgm, BatteryType::kFlooded, BatteryType::kUser},
-      [this](BatteryType b) { SetBatteryType(b); }
+      [this](BatteryType b) { return SetBatteryType(b); }
   };
 
   mqtt::AcInputVoltageRangeSelector input_voltage_range_{
       {InputVoltageRange::kAppliance, InputVoltageRange::kUps},
-      [this](InputVoltageRange r) { SetInputVoltageRange(r); }
+      [this](InputVoltageRange r) { return SetInputVoltageRange(r); }
   };
 
   mqtt::OutputSourcePrioritySelector output_source_priority_{
       {OutputSourcePriority::kSolarUtilityBattery, OutputSourcePriority::kSolarBatteryUtility},
-      [this](OutputSourcePriority p) { SetOutputSourcePriority(p); }
+      [this](OutputSourcePriority p) { return SetOutputSourcePriority(p); }
   };
   mqtt::ChargerSourcePrioritySelector charger_source_priority_{
       {ChargerPriority::kSolarFirst,
        ChargerPriority::kSolarAndUtility,
        ChargerPriority::kOnlySolar},
-       [this](ChargerPriority p) { SetChargerPriority(p); }
+       [this](ChargerPriority p) { return SetChargerPriority(p); }
   };
 
   mqtt::SolarPowerPrioritySelector solar_power_priority_{
       {SolarPowerPriority::kBatteryLoadUtility, SolarPowerPriority::kLoadBatteryUtility},
-      [this](SolarPowerPriority p) { SetSolarPowerPriority(p); }
+      [this](SolarPowerPriority p) { return SetSolarPowerPriority(p); }
   };
 
   mqtt::MachineTypeSelector machine_type_;
@@ -110,4 +112,6 @@ class Pi18ProtocolAdapter : public ProtocolAdapter {
   mqtt::PvTotalGeneratedEnergy total_energy_;
 
   mqtt::WarningsSensor warnings_;
+
+  mqtt::Switch backlight_{"Backlight", [this](bool state) { return TurnBacklight(state); }};
 };

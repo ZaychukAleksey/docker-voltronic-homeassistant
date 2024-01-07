@@ -6,6 +6,8 @@
 
 namespace {
 
+const auto kCommandAccepted = "1";
+
 std::string Concatenate(const std::vector<std::string>& strings, char separator = ',') {
   std::string result;
   for (auto& s : strings) {
@@ -156,7 +158,7 @@ std::string Pi18ProtocolAdapter::GetSerialNumber() {
   if (response.length() != 22) {
     throw std::runtime_error(std::format("Unexpected serial number response length: {}", response));
   }
-  const auto serial_number_length = 10 * AsDigit(response[0]) + AsDigit(response[1]);
+  const auto serial_number_length = 10 * utils::AsDigit(response[0]) + utils::AsDigit(response[1]);
   if (serial_number_length < 1 || serial_number_length > 20) {
     throw std::runtime_error(std::format("Unexpected serial number length: {}. Response: {}",
                                          serial_number_length, response));
@@ -353,7 +355,29 @@ void Pi18ProtocolAdapter::GetStatusInfo() {
   //  sending rubbish with incorrect CRC.
   // GetTotalGeneratedEnergy();
   mode_.Update(GetDeviceMode(GetWorkingModeRaw()));
+  GetFlagsStatus();
   GetWarnings();
+}
+
+void Pi18ProtocolAdapter::GetFlagsStatus() {
+  // Response: ^D020A,B,C,D,E,F,G,H,I<CRC><cr>
+  auto response = Query("^P007FLAG", "^D020");
+  int data[9];
+  const auto n_args = sscanf(
+      response.c_str(), "%1d,%1d,%1d,%1d,%1d,%1d,%1d,%1d,%1d",
+      &data[0], &data[1], &data[2], &data[3], &data[4], &data[5], &data[6], &data[7], &data[8]);
+  if (n_args < std::size(data)) {
+    throw std::runtime_error("Unexpected data in GetGeneralInfo: " + response);
+  }
+  // data[0] - Enable/disable silence buzzer or open buzzer
+  // data[1] - Enable/Disable overload bypass function
+  // data[2] - Enable/Disable LCD display escape to default page after 1min timeout
+  // data[3] - Enable/Disable overload restart
+  // data[4] - Enable/Disable over temperature restart
+  backlight_.Update(data[5]);  // Enable/Disable backlight on
+  // data[6] - Enable/Disable alarm on when primary source interrupt
+  // data[7] - Enable/Disable fault code record
+  // data[8] - Reserved
 }
 
 void Pi18ProtocolAdapter::GetTotalGeneratedEnergy() {
@@ -366,43 +390,38 @@ void Pi18ProtocolAdapter::GetTotalGeneratedEnergy() {
   total_energy_.Update(result);
 }
 
-// TODO: reduce code duplication in the methods below.
-void Pi18ProtocolAdapter::SetChargerPriority(ChargerPriority p) {
-  spdlog::warn("Set charger priority to {}", ToString(p));
-  auto response = Query(std::format("^S009PCP0,{}", GetChargerPriority(p)), "^");
-  if (response != "1") {
-    spdlog::error("Failed to set charger priority to {}. Response: {}", ToString(p), response);
-  }
+bool Pi18ProtocolAdapter::SetChargerPriority(ChargerPriority p) {
+  return SetParam("charger priority", p,
+                  [&] { return Query(std::format("^S009PCP0,{}", GetChargerPriority(p)), "^"); },
+                  kCommandAccepted);
 }
 
-void Pi18ProtocolAdapter::SetOutputSourcePriority(OutputSourcePriority p) {
-  spdlog::warn("Set output source priority to {}", ToString(p));
-  auto response = Query(std::format("^S007POP{}", GetOutputSourcePriority(p)), "^");
-  if (response != "1") {
-    spdlog::error("Failed to set output source priority to {}. Response: {}", ToString(p), response);
-  }
+bool Pi18ProtocolAdapter::SetOutputSourcePriority(OutputSourcePriority p) {
+  return SetParam("output source priority", p,
+                  [&] { return Query(std::format("^S007POP{}", GetOutputSourcePriority(p)), "^"); },
+                  kCommandAccepted);
 }
 
-void Pi18ProtocolAdapter::SetBatteryType(BatteryType t) {
-  spdlog::warn("Set battery type to {}", ToString(t));
-  auto response = Query(std::format("^S007PBT{}", GetBatteryType(t)), "^");
-  if (response != "1") {
-    spdlog::error("Failed to set battery type to {}. Response: {}", ToString(t), response);
-  }
+bool Pi18ProtocolAdapter::SetBatteryType(BatteryType t) {
+  return SetParam("battery type", t,
+                  [&] { return Query(std::format("^S007PBT{}", GetBatteryType(t)), "^"); },
+                  kCommandAccepted);
 }
 
-void Pi18ProtocolAdapter::SetInputVoltageRange(InputVoltageRange r) {
-  spdlog::warn("Set input voltage range to {}", ToString(r));
-  auto response = Query(std::format("^S007PGR{}", GetInputVoltageRange(r)), "^");
-  if (response != "1") {
-    spdlog::error("Failed to set input voltage range to {}. Response: {}", ToString(r), response);
-  }
+bool Pi18ProtocolAdapter::SetInputVoltageRange(InputVoltageRange r) {
+  return SetParam("input voltage range", r,
+                  [&] { return Query(std::format("^S007PGR{}", GetInputVoltageRange(r)), "^"); },
+                  kCommandAccepted);
 }
 
-void Pi18ProtocolAdapter::SetSolarPowerPriority(SolarPowerPriority p) {
-  spdlog::warn("Set solar power priority to {}", ToString(p));
-  auto response = Query(std::format("^S007PSP{}", GetSolarPowerPriority(p)), "^");
-  if (response != "1") {
-    spdlog::error("Failed to set solar power priority to {}. Response: {}", ToString(p), response);
-  }
+bool Pi18ProtocolAdapter::SetSolarPowerPriority(SolarPowerPriority p) {
+  return SetParam("solar power priority", p,
+                  [&] { return Query(std::format("^S007PSP{}", GetSolarPowerPriority(p)), "^"); },
+                  kCommandAccepted);
+}
+
+bool Pi18ProtocolAdapter::TurnBacklight(bool state) {
+  return SetParam("backlight", state,
+                  [&] { return "1"; },
+                  kCommandAccepted);
 }

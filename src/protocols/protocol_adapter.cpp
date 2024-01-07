@@ -6,7 +6,6 @@
 #include "pi18_protocol_adapter.hh"
 #include "pi30_protocol_adapter.hh"
 
-#include "spdlog/spdlog.h"
 
 namespace {
 
