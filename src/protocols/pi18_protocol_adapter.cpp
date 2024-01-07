@@ -421,7 +421,8 @@ bool Pi18ProtocolAdapter::SetSolarPowerPriority(SolarPowerPriority p) {
 }
 
 bool Pi18ProtocolAdapter::TurnBacklight(bool state) {
+  const std::string_view flag = state ? "E" : "D";
   return SetParam("backlight", state,
-                  [&] { return "1"; },
+                  [&] { return Query(std::format("^S006P{}F", flag), "^"); },
                   kCommandAccepted);
 }
