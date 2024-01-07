@@ -89,9 +89,6 @@ class TypedSensor : public Sensor {
   /// Set sensor's value without updating it in HomeAssistant.
   void SetValue(ValueType new_value) {
     std::lock_guard lock(mutex_);
-    if (!value_.has_value()) {
-      Register();
-    }
     value_ = new_value;
   }
 

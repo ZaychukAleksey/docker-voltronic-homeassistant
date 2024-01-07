@@ -1,6 +1,7 @@
 #include "mqtt.hh"
 
 #include <atomic>
+#include <list>
 #include <mutex>
 #include <unordered_map>
 
@@ -11,8 +12,9 @@ namespace {
 std::unique_ptr<MqttClient> mqtt_;
 std::unique_ptr<std::thread> subscription_handler_;
 
-std::mutex subscriptions_mutex;
-static std::unordered_map<std::string, MqttClient::SubscriptionCalllback> subscriptions;
+std::mutex subscriptions_mutex_;
+std::list<MqttClient::SubscriptionCalllback> subscriptions_storage_;
+std::unordered_map<std::string, MqttClient::SubscriptionCalllback*> subscriptions_;
 
 auto GetBrokerAddress(const MqttSettings& mqtt_settings) {
   return std::format("mqtt://{}:{}", mqtt_settings.server, mqtt_settings.port);
@@ -67,8 +69,9 @@ void MqttClient::Subscribe(std::string topic, SubscriptionCalllback&& callback) 
   }
 
   {
-    std::lock_guard lock(subscriptions_mutex);
-    subscriptions[topic] = std::move(callback);
+    std::lock_guard lock(subscriptions_mutex_);
+    subscriptions_storage_.insert(subscriptions_storage_.end(), std::move(callback));
+    subscriptions_[topic] = &subscriptions_storage_.back();
   }
   client_.subscribe(topic, 0);
 }
@@ -84,10 +87,13 @@ void MqttClient::SubscriptionHandler() {
     // Call handler function  Dispatch to a handler function based on the Subscription ID
     spdlog::debug("Message on {}: {}", message->get_topic(), message->get_payload_str());
 
-    std::lock_guard lock(subscriptions_mutex);
-    auto& subscription_callback = subscriptions[message->get_topic()];
+    MqttClient::SubscriptionCalllback* subscription_callback;
+    {
+      std::lock_guard lock(subscriptions_mutex_);
+      subscription_callback = subscriptions_[message->get_topic()];
+    }
     if (subscription_callback) {
-      subscription_callback(message->get_payload_str());
+      (*subscription_callback)(message->get_payload_str());
     }
   }
 }
