@@ -1,6 +1,8 @@
 #pragma once
 
 #include <functional>
+#include <format>
+#include <memory>
 #include <mutex>
 #include <optional>
 #include <string_view>
@@ -8,6 +10,7 @@
 #include <vector>
 
 #include "protocols/types.hh"
+#include "spdlog/spdlog.h"
 #include "utils.h"
 
 namespace mqtt {
@@ -31,6 +34,8 @@ class Sensor {
   };
 
   virtual ~Sensor() = default;
+
+  constexpr std::string_view GetName() const { return name_; }
 
  protected:
   /// @param device_class Optional. One of https://www.home-assistant.io/integrations/sensor/#device-class
@@ -67,6 +72,11 @@ class TypedSensor : public Sensor {
   constexpr TypedSensor(std::string_view name, Kind device_class = Kind::kNone)
       : Sensor(name, device_class) {}
 
+  std::optional<ValueType> GetValue() const {
+    std::lock_guard lock(mutex_);
+    return value_;
+  }
+
   /// Set and update sensor's value in HomeAssistant.
   /// Does nothing if the new value is the same as the previous one.
   void Update(ValueType new_value) {
@@ -83,16 +93,23 @@ class TypedSensor : public Sensor {
   }
 
  protected:
-  std::optional<ValueType> GetValue() const {
-    std::lock_guard lock(mutex_);
-    return value_;
+  std::string ValueToString() const final { return ValueToString(*value_, false); }
+
+  virtual std::string ValueToString(const ValueType& value, bool for_json) const {
+    if constexpr (std::is_same_v<ValueType, bool>) {
+      return value ? "1" : "0";
+    } else if constexpr (std::is_arithmetic_v<ValueType>) {
+      return std::format("{}", value);
+    } else if constexpr (std::is_enum_v<ValueType>) {
+      return for_json ? std::format("\"{}\"", ToString(value)) : ToString(value);
+    } else if constexpr (std::is_same_v<ValueType, std::string>) {
+      return for_json ? std::format("\"{}\"", value) : value;
+    } else {
+      throw std::runtime_error("Unknown type");
+    }
   }
 
-  std::string ValueToString() const override {
-    return utils::ToString(*value_);
-  }
-
-  static ValueType ValueFromString(const std::string& str) {
+  virtual ValueType ValueFromString(const std::string& str) const {
     if constexpr (std::is_same_v<ValueType, bool>) {
       return str == "1";
     } else if constexpr (std::is_integral_v<ValueType>) {
@@ -142,11 +159,13 @@ class InteractiveTypedSensor : public TypedSensor<ValueType> {
       auto previous_value = this->GetValue();
       if (!previous_value.has_value() || previous_value == selected_value) return;
 
+      spdlog::warn("Set {} to {}", this->GetName(), new_value);
       if (on_value_changed_(selected_value)) {
         // Value has been successfully changed. Update it.
         this->Update(selected_value);
       } else {
         // Failed to change the value. Publish the previous one.
+        spdlog::error("Failed to set {} to {}.", this->GetName(), new_value);
         std::lock_guard lock(Sensor::mutex_);
         this->Publish();
       }
@@ -173,27 +192,36 @@ class Switch : public InteractiveTypedSensor<bool> {
 
 
 /// https://www.home-assistant.io/integrations/select.mqtt/
-template<typename Enum> requires std::is_enum_v<Enum>
-class Selector : public InteractiveTypedSensor<Enum> {
+template<typename ValueType>
+class Selector : public InteractiveTypedSensor<ValueType> {
  public:
-  using Items = std::initializer_list<Enum>;
-  using OnSelectedCallback = InteractiveTypedSensor<Enum>::OnChangedCallback;
+  using Items = std::initializer_list<ValueType>;
+  using OnSelectedCallback = InteractiveTypedSensor<ValueType>::OnChangedCallback;
  protected:
   constexpr Selector(std::string_view name,
-                     std::vector<Enum>&& selectable_options,
+                     std::vector<ValueType>&& selectable_options,
                      OnSelectedCallback&& value_selected_callback)
-      : InteractiveTypedSensor<Enum>(name, std::move(value_selected_callback)),
+      : InteractiveTypedSensor<ValueType>(name, std::move(value_selected_callback)),
         selectable_options_(std::move(selectable_options)) {}
 
   constexpr std::string_view Type() const final { return "select"; }
   std::string CommandTopic() const final { return this->StateTopic(); }
+
   std::string AdditionalRegistrationOptions() const final {
-    return std::format(R"("command_topic":"{}", "options":[{}])", this->CommandTopic(),
-                       utils::Concatenate(selectable_options_));
+    // Join options to a string with comma separator.
+    std::string options;
+    for (const auto& value : selectable_options_) {
+      if (!options.empty()) {
+        options += ',';
+      }
+      options.append(this->ValueToString(value, true));
+    }
+
+    return std::format(R"("command_topic":"{}", "options":[{}])", this->CommandTopic(), options);
   }
 
  private:
-  const std::vector<Enum> selectable_options_;
+  const std::vector<ValueType> selectable_options_;
 };
 
 class AcVoltageSensor : public TypedSensor<float> {
@@ -336,6 +364,10 @@ struct BatteryBulkVoltage : public DcVoltageSensor {
 /// Battery stop discharging voltage when grid is available.
 /// Also called "battery recharge voltage". Apparently used, when the inverter is instructed to
 /// drain the batteries even when the grid is available (Solar -> Battery -> Utility).
+//12V unit: 11V/11.3V/11.5V/11.8V/12V/12.3V/12.5V/12.8V
+//24V unit: 22V/22.5V/23V/23.5V/24V/24.5V/25V/25.5V
+//48V unit: 44V/45V/46V/47V/48V/49V/50V/51V
+//00.0V means battery is full(charging in float mode).
 struct BatteryStopDischargingVoltageWithGrid : public DcVoltageSensor {
   constexpr BatteryStopDischargingVoltageWithGrid()
       : DcVoltageSensor("Battery_stop_discharging_voltage_with_grid") {}
@@ -343,9 +375,21 @@ struct BatteryStopDischargingVoltageWithGrid : public DcVoltageSensor {
 
 /// Battery stop charging voltage when grid is available.
 /// Also called "battery re-discharge voltage".
-struct BatteryStopChargingVoltageWithGrid : public DcVoltageSensor {
-  constexpr BatteryStopChargingVoltageWithGrid()
-      : DcVoltageSensor("Battery_stop_charging_voltage_with_grid") {}
+/// @note value is stored internally and is expected to be set as int in 0.1V to avoid
+///       float-point-related effects.
+/// 00.0V means battery is full(charging in float mode).
+struct BatteryStopChargingVoltageWithGrid : public Selector<int> {
+ public:
+  static std::unique_ptr<BatteryStopChargingVoltageWithGrid> Create(int inverter_voltage,
+                                                                    OnSelectedCallback&& callback);
+ protected:
+  BatteryStopChargingVoltageWithGrid(std::vector<int>&& voltages, OnSelectedCallback&& callback)
+      : Selector<int>("Battery_stop_charging_voltage_with_grid",
+                      std::move(voltages), std::move(callback)) {}
+
+
+  std::string ValueToString(const int&, bool) const override;
+  int ValueFromString(const std::string&) const override;
 };
 
 ///=================================================================================================
@@ -427,6 +471,16 @@ struct Mptt2ChargerTemperature : public TemperatureSensor {
 struct WarningsSensor : public TypedSensor<std::string> {
   constexpr WarningsSensor() : TypedSensor("Warnings") {}
   constexpr std::string_view Icon() const override { return "alert"; }
+};
+
+///=================================================================================================
+/// Various settings.
+///=================================================================================================
+
+struct BacklightSwitch : public Switch {
+  BacklightSwitch(OnChangedCallback&& value_selected_callback)
+      : Switch("Backlight", std::move(value_selected_callback)) {}
+  constexpr std::string_view Icon() const override { return "television-ambient-light"; }
 };
 
 }  // namespace mqtt

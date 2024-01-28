@@ -128,4 +128,59 @@ void SubscribeToTopic(const std::string& topic, std::function<void(const std::st
 }
 
 }  // namespace implementation_details
+
+namespace {
+
+/// For 12V inverters.
+struct BatteryStopChargingVoltageWithGrid12v : public BatteryStopChargingVoltageWithGrid {
+  BatteryStopChargingVoltageWithGrid12v(OnSelectedCallback&& callback)
+      : BatteryStopChargingVoltageWithGrid(
+      {0, 120, 123, 125, 128, 130, 133, 135, 138, 140, 143, 145}, std::move(callback)) {}
+};
+
+/// For 24V inverters.
+struct BatteryStopChargingVoltageWithGrid24v : public BatteryStopChargingVoltageWithGrid {
+  BatteryStopChargingVoltageWithGrid24v(OnSelectedCallback&& callback)
+      : BatteryStopChargingVoltageWithGrid(
+      {0, 240, 245, 250, 255, 260, 265, 270, 275, 280, 285, 290}, std::move(callback)) {}
+};
+
+/// For 48V inverters.
+struct BatteryStopChargingVoltageWithGrid48v : public BatteryStopChargingVoltageWithGrid {
+  BatteryStopChargingVoltageWithGrid48v(OnSelectedCallback&& callback)
+      : BatteryStopChargingVoltageWithGrid(
+      {0, 480, 490, 500, 510, 520, 530, 540, 550, 560, 570, 580}, std::move(callback)) {}
+};
+
+}  // namespace
+
+std::unique_ptr<BatteryStopChargingVoltageWithGrid> BatteryStopChargingVoltageWithGrid::Create(
+    int inverter_voltage, OnSelectedCallback&& callback) {
+  switch (inverter_voltage) {
+    case 12: return std::make_unique<BatteryStopChargingVoltageWithGrid12v>(std::move(callback));
+    case 24: return std::make_unique<BatteryStopChargingVoltageWithGrid24v>(std::move(callback));
+    case 48: return std::make_unique<BatteryStopChargingVoltageWithGrid48v>(std::move(callback));
+  }
+  throw std::runtime_error(std::format("Unknown inverter voltage: {}", inverter_voltage));
+}
+
+std::string BatteryStopChargingVoltageWithGrid::ValueToString(const int& value, bool for_json) const
+{
+  std::string result;
+  if (value == 0) {
+    result = "0";
+  } else {
+    const auto truncated_value = value / 10;
+    const auto remnant = value % 10;
+    result = (remnant == 0)
+           ? std::format("{}", truncated_value)
+           : std::format("{}.{}", truncated_value, remnant);
+  }
+  return for_json ? std::format("\"{}\"", result) : result;
+}
+
+int BatteryStopChargingVoltageWithGrid::ValueFromString(const std::string& str) const {
+  return std::stof(str) * 10;
+}
+
 }  // namespace mqtt

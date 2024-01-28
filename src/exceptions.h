@@ -39,3 +39,9 @@ class UnsupportedProtocolException : public BaseException {
                       ? "Unsupported protocol"
                       : std::format("Unsupported protocol: {}", protocol)) {}
 };
+
+class UnexpectedResponseException : public BaseException {
+ public:
+  UnexpectedResponseException(std::string_view reason)
+      : BaseException(reason) {}
+};

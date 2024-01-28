@@ -3,10 +3,9 @@
 #include <format>
 
 #include "spdlog/spdlog.h"
+#include "exceptions.h"
 
 namespace {
-
-const auto kCommandAccepted = "1";
 
 std::string Concatenate(const std::vector<std::string>& strings, char separator = ',') {
   std::string result;
@@ -64,7 +63,7 @@ OutputSourcePriority GetOutputSourcePriority(int type) {
 }
 
 /// Opposite to the previous function.
-std::string GetOutputSourcePriority(OutputSourcePriority p) {
+std::string_view GetOutputSourcePriority(OutputSourcePriority p) {
   switch (p) {
     case OutputSourcePriority::kSolarUtilityBattery: return "0";
     case OutputSourcePriority::kSolarBatteryUtility: return "1";
@@ -83,11 +82,11 @@ ChargerPriority GetChargerPriority(int type) {
 }
 
 /// Opposite to the previous function.
-int GetChargerPriority(ChargerPriority p) {
+std::string_view GetChargerPriority(ChargerPriority p) {
   switch (p) {
-    case ChargerPriority::kSolarFirst: return 0;
-    case ChargerPriority::kSolarAndUtility: return 1;
-    case ChargerPriority::kOnlySolar: return 2;
+    case ChargerPriority::kSolarFirst: return "0";
+    case ChargerPriority::kSolarAndUtility: return "1";
+    case ChargerPriority::kOnlySolar: return "2";
     default: throw std::runtime_error(std::format("Unexpected ChargerPriority: {}", ToString(p)));
   }
 }
@@ -180,6 +179,19 @@ std::string Pi18ProtocolAdapter::GetGeneratedEnergyOfDayRaw(
   return Query(std::format("^P013ED{}{}{}", year, month, day), "^D011");
 }
 
+/// Depending of inverter's nominal battery voltage
+void Pi18ProtocolAdapter::SetBatteryStopChargingVoltageWithGrid(auto battery_nominal_voltage,
+                                                                int value) {
+//  if (!battery_stop_charging_voltage_with_grid_) {
+//    // TODO fix
+//    std::function<bool(int)> callback = [this](double) { return true; };
+//    battery_stop_charging_voltage_with_grid_ = mqtt::BatteryStopChargingVoltageWithGrid::Create(
+//        battery_nominal_voltage, std::move(callback));
+//  }
+//
+//  battery_stop_charging_voltage_with_grid_->Update(value);
+}
+
 void Pi18ProtocolAdapter::GetRatedInfo() {
   // Special case. According to the protocol, the length is 85. But my inverter returns 89.
   // Therefore I can't check it as a prefix and have to skip it here.
@@ -207,9 +219,11 @@ void Pi18ProtocolAdapter::GetRatedInfo() {
   // ac_output_rating_current  = data[4] / 10.f;
   // ac_output_rating_apparent_power = data[5];
   // ac_output_rating_active_power = data[6];
-  battery_nominal_voltage_.Update(data[7] / 10.f);
+  const auto battery_nominal_voltage = data[7] / 10.f;
+  battery_nominal_voltage_.Update(battery_nominal_voltage);
   battery_stop_discharging_voltage_with_grid_.Update(data[8] / 10.f);  // battery_recharge_voltage
-  battery_stop_charging_voltage_with_grid_.Update(data[9] / 10.f); // redischarge_voltage
+
+  SetBatteryStopChargingVoltageWithGrid(battery_nominal_voltage, data[9]); // redischarge_voltage
   battery_under_voltage_.Update(data[10] / 10.f);
   battery_bulk_voltage_.Update(data[11] / 10.f);
   battery_float_voltage_.Update(data[12] / 10.f);
@@ -390,46 +404,42 @@ void Pi18ProtocolAdapter::GetTotalGeneratedEnergy() {
   total_energy_.Update(result);
 }
 
+bool Pi18ProtocolAdapter::SendCommand(std::string_view command) {
+  constexpr auto kCommandAccepted = "^1";
+  try {
+    Query(command, kCommandAccepted);
+    return true;
+  } catch (const UnexpectedResponseException&) {
+    return false;
+  }
+}
+
 bool Pi18ProtocolAdapter::SetChargerPriority(ChargerPriority p) {
-  return SetParam("charger priority", p,
-                  [&] { return Query(std::format("^S009PCP0,{}", GetChargerPriority(p)), "^"); },
-                  kCommandAccepted);
+  return SendCommand(std::format("^S009PCP0,{}", GetChargerPriority(p)));
 }
 
 bool Pi18ProtocolAdapter::SetOutputSourcePriority(OutputSourcePriority p) {
-  return SetParam("output source priority", p,
-                  [&] { return Query(std::format("^S007POP{}", GetOutputSourcePriority(p)), "^"); },
-                  kCommandAccepted);
+  return SendCommand(std::format("^S007POP{}", GetOutputSourcePriority(p)));
 }
 
 bool Pi18ProtocolAdapter::SetBatteryType(BatteryType t) {
-  return SetParam("battery type", t,
-                  [&] { return Query(std::format("^S007PBT{}", GetBatteryType(t)), "^"); },
-                  kCommandAccepted);
+  return SendCommand(std::format("^S007PBT{}", GetBatteryType(t)));
 }
 
 bool Pi18ProtocolAdapter::SetInputVoltageRange(InputVoltageRange r) {
-  return SetParam("input voltage range", r,
-                  [&] { return Query(std::format("^S007PGR{}", GetInputVoltageRange(r)), "^"); },
-                  kCommandAccepted);
+  return SendCommand(std::format("^S007PGR{}", GetInputVoltageRange(r)));
 }
 
 bool Pi18ProtocolAdapter::SetSolarPowerPriority(SolarPowerPriority p) {
-  return SetParam("solar power priority", p,
-                  [&] { return Query(std::format("^S007PSP{}", GetSolarPowerPriority(p)), "^"); },
-                  kCommandAccepted);
+  return SendCommand(std::format("^S007PSP{}", GetSolarPowerPriority(p)));
 }
 
 bool Pi18ProtocolAdapter::TurnBacklight(bool state) {
   const std::string_view flag = state ? "E" : "D";
-  return SetParam("backlight", state,
-                  [&] { return Query(std::format("^S006P{}F", flag), "^"); },
-                  kCommandAccepted);
+  return SendCommand(std::format("^S006P{}F", flag));
 }
 
 bool Pi18ProtocolAdapter::TurnLoadConnection(bool on) {
   const std::string_view flag = on ? "1" : "0";
-  return SetParam("load connection", on,
-                  [&] { return Query(std::format("^S007LON{}", flag), "^"); },
-                  kCommandAccepted);
+  return SendCommand(std::format("^S007LON{}", flag));
 }

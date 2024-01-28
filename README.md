@@ -1,3 +1,7 @@
+# A Docker-based Home Assistant interface for MPP/Voltronic Solar Inverters
+
+**Docker Hub:** [`zaychukaleksey/ha-voltronic-mqtt:latest`](https://hub.docker.com/repository/docker/zaychukaleksey/ha-voltronic-mqtt/general)
+
 This is a fork from [catalinbordan](https://github.com/catalinbordan/docker-voltronic-homeassistant) version (which, in turn, derives from [ned-kelly](https://github.com/ned-kelly/docker-voltronic-homeassistant)
 project). Please, check the origins for details.
 
@@ -11,17 +15,11 @@ The following changes were made:
 - Code simplified and rewritten on C++20 using [Google Style](https://google.github.io/styleguide/cppguide.html).
 - Enhancements in logging and error-handling.
 
-<details><summary><b>This is WORK-IN-PROGRESS. Coming soon:</b></summary>
+<details><summary><b>WORK-IN-PROGRESS. Coming soon:</b></summary>
 
 - PI17 protocol support.
 - Interactive integration with HomeAssistant (change inverter parameters right from HomeAssistant).
 </details>
-
----
-
-# A Docker-based Home Assistant interface for MPP/Voltronic Solar Inverters 
-
-**Docker Hub:** [`zaychukaleksey/ha-voltronic-mqtt:latest`](https://hub.docker.com/repository/docker/zaychukaleksey/ha-voltronic-mqtt/general)
 
 ---
 

@@ -51,11 +51,19 @@ class Pi18ProtocolAdapter : public ProtocolAdapter {
   std::string GetAcSupplyLoadTimeBucketRaw() { return Query("^P005ACLT", "^D012"); }
 
  private:
+  void SetBatteryStopChargingVoltageWithGrid(auto battery_nominal_voltage, int value);
+  bool SendCommand(std::string_view);
+
   mqtt::InverterMode mode_;
 
   mqtt::BatteryNominalVoltage battery_nominal_voltage_;
   mqtt::BatteryStopDischargingVoltageWithGrid battery_stop_discharging_voltage_with_grid_;
-  mqtt::BatteryStopChargingVoltageWithGrid battery_stop_charging_voltage_with_grid_;
+  // TODO: implement. Requires simultaneous implementation for
+  //  Battery re-charged and re-discharged voltage when utility is available
+  // ^S014BUCDmmm,nnn<cr>
+  // mmm Battery re-charged voltage when utility is available m: 0~9, unit: 0.1V
+  // nnn Battery re-discharged voltage when utility is available n: 0~9, unit: 0.1V
+//  std::unique_ptr<mqtt::BatteryStopChargingVoltageWithGrid> battery_stop_charging_voltage_with_grid_;
   mqtt::BatteryUnderVoltage battery_under_voltage_;
   mqtt::BatteryBulkVoltage battery_bulk_voltage_;
   mqtt::BatteryFloatVoltage battery_float_voltage_;
@@ -114,6 +122,6 @@ class Pi18ProtocolAdapter : public ProtocolAdapter {
 
   mqtt::WarningsSensor warnings_;
 
-  mqtt::Switch backlight_{"Backlight", [this](bool state) { return TurnBacklight(state); }};
+  mqtt::BacklightSwitch backlight_{[this](bool state) { return TurnBacklight(state); }};
   mqtt::Switch load_connection_{"Load_connection", [this](bool state) { return TurnLoadConnection(state); }};
 };

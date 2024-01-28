@@ -7,8 +7,6 @@
 
 namespace {
 
-const auto kCommandAccepted = "ACK";
-
 //Generate 8 bit CRC of supplied string + 1 as used in REVO PI30 protocol
 //CHK=DATE0+....+1
 //CHK=The accumulated value of sent data+1, single byte.
@@ -34,7 +32,7 @@ BatteryType GetBatteryType(int type) {
 }
 
 /// Opposite to the previous function.
-std::string GetBatteryType(BatteryType t) {
+std::string_view GetBatteryType(BatteryType t) {
   // Note that there are several PI30 protocols, and these constants may vary very differently.
   // For that reason we support only the first three of them which are common.
   switch (t) {
@@ -54,7 +52,7 @@ InputVoltageRange GetInputVoltageRange(int type) {
 }
 
 /// Opposite to the previous function.
-std::string GetInputVoltageRange(InputVoltageRange r) {
+std::string_view GetInputVoltageRange(InputVoltageRange r) {
   switch (r) {
     case InputVoltageRange::kAppliance: return "00";
     case InputVoltageRange::kUps: return "01";
@@ -72,7 +70,7 @@ OutputSourcePriority GetOutputSourcePriority(int type) {
 }
 
 /// Opposite to the previous function.
-std::string GetOutputSourcePriority(OutputSourcePriority p) {
+std::string_view GetOutputSourcePriority(OutputSourcePriority p) {
   switch (p) {
     case OutputSourcePriority::kUtility: return "00";
     case OutputSourcePriority::kSolarUtilityBattery: return "01";
@@ -92,7 +90,7 @@ ChargerPriority GetChargerPriority(int type) {
 }
 
 /// Opposite to the previous function.
-std::string GetChargerPriority(ChargerPriority p) {
+std::string_view GetChargerPriority(ChargerPriority p) {
   switch (p) {
     case ChargerPriority::kUtilityFirst: return "00";
     case ChargerPriority::kSolarFirst: return "01";
@@ -208,7 +206,7 @@ void Pi30ProtocolAdapter::GetRatedInfo() {
 
   battery_nominal_voltage_.Update(battery_nominal_voltage);
   battery_stop_discharging_voltage_with_grid_.Update(battery_stop_discharging_voltage_with_grid);
-  battery_stop_charging_voltage_with_grid_.Update(battery_stop_charging_voltage_with_grid);
+//  battery_stop_charging_voltage_with_grid_.Update(battery_stop_charging_voltage_with_grid);
   battery_under_voltage_.Update(battery_under_voltage);
   battery_bulk_voltage_.Update(battery_bulk_voltage);
   battery_float_voltage_.Update(battery_float_voltage);
@@ -292,26 +290,28 @@ void Pi30ProtocolAdapter::GetStatusInfo() {
   mode_.Update(GetDeviceMode(GetDeviceModeRaw()));
 }
 
+bool Pi30ProtocolAdapter::SendCommand(std::string_view command) {
+  constexpr auto kCommandAccepted = "(ACK";
+  try {
+    Query(command, kCommandAccepted);
+    return true;
+  } catch (const UnexpectedResponseException&) {
+    return false;
+  }
+}
+
 bool Pi30ProtocolAdapter::SetChargerPriority(ChargerPriority p) {
-  return SetParam("charger priority", p,
-                  [&] { return Query(std::format("PCP{}", GetChargerPriority(p)), "("); },
-                  kCommandAccepted);
+  return SendCommand(std::format("PCP{}", GetChargerPriority(p)));
 }
 
 bool Pi30ProtocolAdapter::SetOutputSourcePriority(OutputSourcePriority p) {
-  return SetParam("output source priority", p,
-                  [&] { return Query(std::format("POP{}", GetOutputSourcePriority(p)), "("); },
-                  kCommandAccepted);
+  return SendCommand(std::format("POP{}", GetOutputSourcePriority(p)));
 }
 
 bool Pi30ProtocolAdapter::SetBatteryType(BatteryType t) {
-  return SetParam("battery type", t,
-                  [&] { return Query(std::format("POP{}", GetBatteryType(t)), "("); },
-                  kCommandAccepted);
+  return SendCommand(std::format("POP{}", GetBatteryType(t)));
 }
 
 bool Pi30ProtocolAdapter::SetInputVoltageRange(InputVoltageRange r) {
-  return SetParam("battery type", r,
-                  [&] { return Query(std::format("PGR{}", GetInputVoltageRange(r)), "("); },
-                  kCommandAccepted);
+  return SendCommand(std::format("PGR{}", GetInputVoltageRange(r)));
 }
