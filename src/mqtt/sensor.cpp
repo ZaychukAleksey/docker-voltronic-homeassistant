@@ -18,7 +18,7 @@ constexpr std::string_view ToString(Sensor::Kind d) {
     case Sensor::Kind::kPower: return "power";
     case Sensor::Kind::kApparentPower: return "apparent_power";
     case Sensor::Kind::kEnergy: return "energy";
-    case Sensor::Kind::kPercent: return "None";
+    case Sensor::Kind::kPercent: return "";
     case Sensor::Kind::kTemperature: return "temperature";
     case Sensor::Kind::kBattery: return "battery";
     case Sensor::Kind::kNone: return "";
@@ -76,8 +76,9 @@ std::string Sensor::StateTopic() const {
 void Sensor::Register() {
   std::string payload = "{\n";
   payload.append(std::format("\t\"device\":{}", GetDeviceInfo()));
-  if (device_class_ != Kind::kNone) {
-    payload.append(std::format(",\n\t\"device_class\":\"{}\"", ToString(device_class_)));
+  const auto device_class = ToString(device_class_);
+  if (!device_class.empty()) {
+    payload.append(std::format(",\n\t\"device_class\":\"{}\"", device_class));
 
     // If NOT "None", the sensor is assumed to be numerical and will be displayed as a line-chart in
     // the frontend instead of as discrete values.

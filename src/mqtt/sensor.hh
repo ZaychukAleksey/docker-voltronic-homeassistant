@@ -294,6 +294,8 @@ struct OutputActivePower : public PowerSensor {
 
 struct OutputLoadPercent : public TypedSensor<int> {
   constexpr OutputLoadPercent() : TypedSensor("Output_load_percent", Kind::kPercent) {}
+
+  constexpr std::string_view Icon() const override { return "percent"; }
 };
 
 ///=================================================================================================
